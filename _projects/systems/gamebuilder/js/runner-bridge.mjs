@@ -1,3 +1,21 @@
+/**
+ * @module runner-bridge
+ * @description
+ * Provides a small readiness bridge from GameBuilder to the shared GAME_RUNNER
+ * include without reaching into the runner's editor or executor internals.
+ *
+ * @data
+ * The runner registers a controller in `window.OCSGameRunners`, keyed by its
+ * `runnerId`, and dispatches `ocs:game-runner-ready` with `{ runnerId,
+ * controller }` when initialization completes.
+ *
+ * @usage
+ * Await `waitForGameRunner(runnerId)` before invoking the returned controller.
+ * The GameBuilder page uses this to obtain code/change, save/snapshot,
+ * engine-selection, run, and stop operations. `setSaveHandler` installs the
+ * awaited workspace persistence hook. If readiness exceeds the timeout,
+ * the promise rejects with an error.
+ */
 export function waitForGameRunner(runnerId, timeoutMs = 10000) {
   const existing = window.OCSGameRunners?.[runnerId];
   if (existing) {
