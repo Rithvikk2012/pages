@@ -1,0 +1,76 @@
+Title: "Phase 1 updates (10/12)"
+Description: "Rack rebuild progress and the next steps toward reliable shared inference."
+
+sections:
+  - id: future-plan
+    title: "Future plan"
+    summary: "Finish the experiment rig, establish repeatable baselines, and test security before a limited student pilot."
+    diagram: |
+      %%{init: {"themeVariables": {"fontSize": "20px"}, "flowchart": {"nodeSpacing": 30, "rankSpacing": 45}}}%%
+      flowchart TD
+        A["Finish Rack 2<br/>Boot · OS · GPUs"] --> B["Record a reproducible setup"]
+        B --> C["Inference engineering<br/>Baselines and stress tests"]
+        B --> D["Basic cyber testing<br/>Prompt injection and access controls"]
+        C --> E["Compare models and serving methods"]
+        D --> F["Test defenses and log failures"]
+        E --> G["Review evidence"]
+        F --> G
+        G --> H["Limited student pilot<br/>Streaming API · keys · health checks"]
+    points:
+      - title: "Experiment rig."
+        detail: "Rack 2 keeps disruptive experiments separate from Rack 1's shared inference service."
+      - title: "Evidence before rollout."
+        detail: "Follow Revollo's crawl, walk, run checkpoints; promote configurations only after performance and security review."
+
+  - id: rack-1-testing
+    title: "Rack 1 inference testing plan"
+    summary: "Find the quality–latency–resource Pareto frontier, then validate the best configurations under concurrent use."
+    diagram: |
+      %%{init: {"themeVariables": {"fontSize": "20px"}, "flowchart": {"nodeSpacing": 30, "rankSpacing": 45}}}%%
+      flowchart TD
+        A["Fixed coding workload"] --> B["Cold and warm baselines"]
+        B --> C["Compare models<br/>Size · quantization · quality"]
+        B --> D["Compare serving methods<br/>Speculative decoding · disaggregation"]
+        D --> E["GPU placement and batching"]
+        C --> F["Measure quality, speed and memory"]
+        E --> F
+        F --> G["Concurrent users and scheduling<br/>Queueing · fairness · stability"]
+        G --> H["Load and recovery tests<br/>Sustained · burst · soak"]
+        H --> I["Pareto frontier<br/>Choose primary and fallback"]
+    points:
+      - title: "Comparable results."
+        detail: "Keep the workload fixed and repeat each configuration; raw throughput alone can hide poor quality or unfair scheduling."
+      - title: "Hardware compatibility."
+        detail: "Treat speculative decoding and disaggregation as experiments, contingent on runtime support and the GTX 1070/PCIe constraints."
+
+  - id: hardware-progress
+    title: "What we have been working on"
+    summary: "Rack 1 has been rebuilt into a cleaner, usable system, and Rack 2 reached BIOS for the first time."
+    diagram: |
+      %%{init: {"themeVariables": {"fontSize": "20px"}, "flowchart": {"nodeSpacing": 30, "rankSpacing": 45}}}%%
+      flowchart TD
+        A["Rack 1: split-power experiment"] --> B["Full rewire and rebuild"]
+        B --> C["Cleaner, usable rack"]
+        C --> D["Next: reliability testing"]
+        E["Rack 2: reworked with Mr. Mort"] --> F["First BIOS boot"]
+        F --> G["Next: experiment-rig setup"]
+        H["Mac mini network setup"] --> I["Teammate update pending"]
+    points:
+      - title: "Rack 1 rebuild."
+        detail: "We replaced the split-power-supply experiment with a full rewire and rebuild; sustained-load and recovery testing comes next."
+      - title: "Rack 2 milestone."
+        detail: "With Mr. Mort's help, the reworked rack booted into BIOS for the first time, unblocking experiment-rig setup."
+      - title: "Network setup on Mac mini."
+        detail: "Update pending — space reserved for the teammate's setup notes."
+
+sources:
+  - title: "Issue #1 — Dual-rack hardware and software allocation"
+    url: "https://github.com/Open-Coding-Society/OCS-Intelligence/issues/1"
+  - title: "Issue #4 — Inference bottlenecks and baseline metrics"
+    url: "https://github.com/Open-Coding-Society/OCS-Intelligence/issues/4"
+  - title: "Issue #16 — Revollo's MVP checklist slide"
+    url: "https://github.com/Open-Coding-Society/OCS-Intelligence/issues/16"
+  - title: "Issue #20 — Blueprint, model bake-off, stress tests, and pilot gates"
+    url: "https://github.com/Open-Coding-Society/OCS-Intelligence/issues/20"
+  - title: "Issue #22 — Revollo meeting notes and weekly playbooks"
+    url: "https://github.com/Open-Coding-Society/OCS-Intelligence/issues/22"
