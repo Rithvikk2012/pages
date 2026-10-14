@@ -1,0 +1,236 @@
+// Classroom Presence System capstone pages (/capstone/presence-system/*)
+// Scoped aliases map back to the user's preference colors, same pattern as jarvis.scss.
+
+.rfid-presence-infograph {
+  --rp-bg: var(--pref-bg-color);
+  --rp-card-border: var(--ui-border);
+  --rp-text: var(--pref-text-color);
+  --rp-text-muted: var(--text-muted);
+  --rp-accent: var(--pref-accent-color);
+  --rp-accent-soft: color-mix(in srgb, var(--pref-accent-color) 15%, transparent);
+  --rp-surface: color-mix(in srgb, var(--rp-text) 6%, var(--rp-bg));
+  --rp-surface-strong: color-mix(in srgb, var(--rp-text) 12%, var(--rp-bg));
+  --rp-border-strong: color-mix(in srgb, var(--rp-text) 18%, transparent);
+  --rp-success: var(--rp-accent);
+  // Documented literal-color exception: amber/red carry status meaning
+  // (tardy, mismatch, absent) that the single theme accent can't express.
+  // Mixed with the text color so they stay readable in light and dark themes.
+  --rp-warning: color-mix(in srgb, #d99a00 80%, var(--rp-text));
+  --rp-danger: color-mix(in srgb, #e5484d 85%, var(--rp-text));
+
+  .rfid-presence-question {
+    font-size: 1.05rem;
+    line-height: 1.7;
+    margin: 0;
+  }
+
+  .rfid-presence-table-wrap {
+    overflow-x: auto;
+    margin-top: 1rem;
+  }
+
+  .rfid-presence-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+
+    th,
+    td {
+      text-align: left;
+      padding: 0.9rem 1rem;
+      border-bottom: 1px solid var(--rp-card-border);
+      vertical-align: top;
+    }
+
+    th {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--rp-text-muted);
+    }
+
+    td {
+      color: var(--rp-text-muted);
+      line-height: 1.5;
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    a {
+      text-decoration: none;
+
+      &:hover {
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
+    }
+  }
+
+  .rfid-presence-pill {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-radius: 999px;
+    border: 1px solid var(--rp-border-strong);
+    background: var(--rp-surface-strong);
+    color: var(--rp-text);
+  }
+
+  .rfid-presence-pill-good {
+    border-color: var(--rp-success);
+    background: var(--rp-success);
+    color: var(--rp-bg);
+  }
+
+  .rfid-presence-pill-warn {
+    border-color: var(--rp-warning);
+    background: color-mix(in srgb, var(--rp-warning) 15%, transparent);
+    color: var(--rp-warning);
+  }
+
+  .rfid-presence-pill-bad {
+    border-color: var(--rp-danger);
+    background: color-mix(in srgb, var(--rp-danger) 15%, transparent);
+    color: var(--rp-danger);
+  }
+
+  .rfid-presence-pill-neutral {
+    border-color: var(--rp-border-strong);
+    background: var(--rp-surface);
+    color: var(--rp-text-muted);
+  }
+
+  .rfid-presence-stage-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 2rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--rp-card-border);
+
+    > a {
+      flex: 1 1 auto;
+      text-align: center;
+      white-space: nowrap;
+    }
+  }
+
+  // Pipeline page (/capstone/presence-system/pipeline/)
+  .pp-progress {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .pp-progress-item {
+    border: 1px solid var(--rp-card-border);
+    background: var(--rp-surface);
+    border-radius: 10px;
+    padding: 1rem;
+  }
+
+  .pp-progress-name {
+    margin-top: 0.6rem;
+    font-weight: 700;
+    color: var(--rp-text);
+  }
+
+  .pp-progress-note {
+    font-size: 0.85rem;
+    color: var(--rp-text-muted);
+  }
+
+  .pp-shots {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+
+  .pp-shot {
+    margin: 0;
+
+    img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border: 1px solid var(--rp-card-border);
+      border-radius: 8px;
+    }
+
+    figcaption {
+      margin-top: 0.5rem;
+      font-size: 0.85rem;
+      color: var(--rp-text-muted);
+    }
+  }
+
+  .pp-photo-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 220px;
+    border: 2px dashed var(--rp-border-strong);
+    border-radius: 10px;
+    color: var(--rp-text-muted);
+    text-align: center;
+    padding: 1rem;
+  }
+
+  // Terminal-style block (example request on the Technical page)
+  .pp-output {
+    margin: 1rem 0 0;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--rp-card-border);
+    border-radius: 8px;
+    background: var(--rp-surface);
+    color: var(--rp-text);
+    font-size: 0.85rem;
+    white-space: pre;
+    overflow-x: auto;
+  }
+
+  // Pipeline page: Plan timeline (done steps filled, upcoming steps outlined)
+  .pp-timeline {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0 1.25rem;
+    border-left: 2px solid var(--rp-border-strong);
+  }
+
+  .pp-step {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+    padding: 0.45rem 0;
+
+    &::before {
+      content: "";
+      position: absolute;
+      left: calc(-1.25rem - 7px);
+      top: 0.85rem;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 2px solid var(--rp-accent);
+      background: var(--rp-bg);
+    }
+  }
+
+  .pp-step-done::before { background: var(--rp-accent); }
+
+  .pp-step-when {
+    min-width: 4.5rem;
+    font-weight: 700;
+    color: var(--rp-text);
+  }
+
+  .pp-step-what { color: var(--rp-text-muted); }
+
+  .pp-step-done .pp-step-what { color: var(--rp-text); }
+}

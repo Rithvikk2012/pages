@@ -63,6 +63,108 @@ Spatial presence, face-scanning system"]
   </div>
 
   <div class="ocs__card">
+    <h3 class="ocs__section-title">One Tap, Step by Step (built today)</h3>
+    <pre class="mermaid">sequenceDiagram
+    participant S as Student
+    participant C as CrowPi
+    participant F as Flask
+    participant DB as Database
+    participant D as Dashboard
+    S->>C: Taps laptop tag
+    C->>F: POST tap (card ID, time)
+    Note over F: presence-event handler
+    F->>DB: Save as ENTER in this period
+    F-->>C: accepted
+    loop every 2 seconds
+        D->>F: GET classroom status
+        F->>DB: Read this period's taps
+        F-->>D: PRESENT or TARDY
+    end
+</pre>
+  </div>
+
+  <div class="ocs__card">
+    <h3 class="ocs__section-title">API Endpoints (built today)</h3>
+    <div class="pv-api">
+      <div class="pv-api-row">
+        <span class="pv-method pv-method-post">POST</span>
+        <code class="pv-api-path">/api/presence/event</code>
+        <span class="pv-api-auth pv-api-auth-device">Device key</span>
+        <span class="pv-api-what">Record a tap (source rfid) or a camera result (source camera)</span>
+      </div>
+      <div class="pv-api-row">
+        <span class="pv-method pv-method-post">POST</span>
+        <code class="pv-api-path">/api/rfid/scan</code>
+        <span class="pv-api-auth pv-api-auth-device">Device key</span>
+        <span class="pv-api-what">Route the CrowPi uses today; forwards to /api/presence/event</span>
+      </div>
+      <div class="pv-api-row">
+        <span class="pv-method pv-method-get">GET</span>
+        <code class="pv-api-path">/api/presence/classrooms/{id}/taps/pending</code>
+        <span class="pv-api-auth pv-api-auth-device">Device key</span>
+        <span class="pv-api-what">Camera asks for taps from the last 15 seconds</span>
+      </div>
+      <div class="pv-api-row">
+        <span class="pv-method pv-method-get">GET</span>
+        <code class="pv-api-path">/api/presence/classrooms/{id}/status</code>
+        <span class="pv-api-auth pv-api-auth-teacher">Teacher / Admin</span>
+        <span class="pv-api-what">Each student's state now (the dashboard polls this every 2 s)</span>
+      </div>
+      <div class="pv-api-row">
+        <span class="pv-method pv-method-post">POST</span>
+        <code class="pv-api-path">/api/presence/periods/start</code>
+        <span class="pv-api-auth pv-api-auth-teacher">Teacher / Admin</span>
+        <span class="pv-api-what">Start a demo period (overrides the bell schedule)</span>
+      </div>
+      <div class="pv-api-row">
+        <span class="pv-method pv-method-post">POST</span>
+        <code class="pv-api-path">/api/rfid/register</code>
+        <span class="pv-api-auth pv-api-auth-teacher">Teacher / Admin</span>
+        <span class="pv-api-what">Link a tag to a student</span>
+      </div>
+      <div class="pv-api-row">
+        <span class="pv-method pv-method-get">GET</span>
+        <code class="pv-api-path">/api/rfid/classrooms/{id}/events</code>
+        <span class="pv-api-auth pv-api-auth-login">Logged in, same school</span>
+        <span class="pv-api-what">Latest 200 taps for a classroom</span>
+      </div>
+      <div class="pv-api-row">
+        <span class="pv-method pv-method-post">POST</span>
+        <code class="pv-api-path">/api/authenticate</code>
+        <span class="pv-api-auth pv-api-auth-login">Password</span>
+        <span class="pv-api-what">OCS login; sets the session cookie</span>
+      </div>
+    </div>
+    <p class="rfid-presence-about">Device key = the <code>X-API-Key</code> header the CrowPi (and later the camera) sends. Teacher / Admin = a normal OCS login. Example tap, the request the CrowPi sends and what Flask returns:</p>
+    <pre class="pp-output">POST /api/presence/event
+X-API-Key: (device key)
+
+{
+  "event_id": "3f2b8c1e-6a1d-4f7e-9b0a-2d5c7e9f1a44",
+  "source": "rfid",
+  "classroom_id": 1,
+  "occurred_at": "2026-10-12T15:44:07.123Z",
+  "tag_uid": "1234567890",
+  "device_id": "crowpi-room1"
+}
+
+200 OK (trimmed)
+{
+  "status": "accepted",
+  "duplicate": false,
+  "event": {
+    "uid": "vibham",
+    "user_name": "Vibha Mandayam",
+    "type": "enter",
+    "period": "Demo Period",
+    "occurred_at": "2026-10-12T15:44:07.123Z",
+    "received_at": "2026-10-12T15:44:07.410Z"
+  }
+}</pre>
+    <p class="rfid-presence-about">Errors: 401 bad or missing device key, 404 unregistered tag (<code>"status": "unregistered"</code>), 400 missing fields or a timestamp without a timezone. A resent <code>event_id</code> returns the original record with <code>"duplicate": true</code>.</p>
+  </div>
+
+  <div class="ocs__card">
     <h3 class="ocs__section-title">Presence State Model</h3>
     <p class="rfid-presence-about">For the RFID and camera pairing: two independent signals, device via RFID and student via camera, get correlated into one of these states per student per period.</p>
     <div class="ocs__diagram">
