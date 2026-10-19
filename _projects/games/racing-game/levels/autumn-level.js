@@ -1,6 +1,5 @@
 import GameEnvBackground from '@assets/js/GameEnginev1.1/essentials/GameEnvBackground.js';
 import Player from '@assets/js/GameEnginev1.1/essentials/Player.js';
-import Player2 from '@assets/js/GameEnginev1.1/essentials/Player2.js';
 import Character from '@assets/js/GameEnginev1.1/essentials/Character.js';
 import SplineBarrier from '@assets/js/GameEnginev1.1/essentials/SplineBarrier.js';
 import TimeLapScreen from './TimeLapScreen.js';
@@ -92,7 +91,7 @@ class GameLevelAutumn {
     this.classes = [
       { class: GameEnvBackground, data: background_data },
       { class: Player, data: player_data },
-      { class: Player2, data: other_data },
+      { class: Player, data: other_data },
       { class: SplineBarrier, data: barrierData1 },
       { class: SplineBarrier, data: barrierData2 },
       { class: Character, data: BoxData },
