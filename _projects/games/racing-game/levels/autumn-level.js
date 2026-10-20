@@ -10,7 +10,7 @@ class GameLevelAutumn {
     const background_data = {
       name: "Autumn Course",
       greeting: "Welcome to the Autumn Level!",
-      src: path + '/images/projects/racing-game/Autumn_Track.jpeg',
+      src: path + '/images/projects/racing-game/Autumn_Mud_Track.png',
       pixels: { height: 360, width: 643 }
     };
     const player_data = {
