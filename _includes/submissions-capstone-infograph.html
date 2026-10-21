@@ -1,167 +1,389 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 
 <style>
 .sub-cap {
-  --ink: #0b0e11;
-  --surface: #14181c;
-  --hairline: #262c31;
-  --signal: #37d67a;
-  --paper: #eeeae1;
-  --text: #d8dbdd;
-  --text-muted: #868d94;
+  --ink: #101820;
+  --surface: #18232e;
+  --surface-raised: #202e3b;
+  --hairline: #344453;
+  --signal: #63d6b5;
+  --signal-soft: #183d3a;
+  --paper: #f4f7fa;
+  --text: #d9e1e8;
+  --text-muted: #a2b0bd;
+  --blue: #76b8ff;
+  --blue-soft: #203b55;
+  --gold: #f2bd68;
 
-  --mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
-  --sans: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --sans: 'DM Sans', system-ui, -apple-system, sans-serif;
+  --display: 'Space Grotesk', system-ui, -apple-system, sans-serif;
 
   background: var(--ink);
   color: var(--text);
   font-family: var(--sans);
-  border-radius: 1.25rem;
-  padding: 2.5rem 2rem 2.75rem;
-  max-width: 860px;
+  border-radius: 1.35rem;
+  padding: clamp(1.25rem, 4vw, 2.5rem);
+  max-width: 1100px;
   margin: 0 auto;
   border: 1px solid var(--hairline);
+  box-shadow: 0 18px 50px rgba(0,0,0,.18);
+  line-height: 1.6;
 }
 
-.sub-cap * { box-sizing: border-box; }
+.sub-cap * {
+  box-sizing: border-box;
+}
+
+.sub-cap a {
+  transition: color .18s ease, border-color .18s ease, background .18s ease;
+}
 
 .sub-cap .crumb {
-  font-family: var(--mono);
-  font-size: 0.75rem;
-  letter-spacing: 0.06em;
+  font-size: .73rem;
+  font-weight: 700;
+  letter-spacing: .12em;
   color: var(--text-muted);
   text-decoration: none;
-  margin-bottom: 1.75rem;
+  margin-bottom: 1.25rem;
   display: inline-block;
+  text-transform: uppercase;
 }
-.sub-cap .crumb:hover { color: var(--paper); }
-.sub-cap .crumb b { color: var(--paper); font-weight: 600; }
+
+.sub-cap .crumb:hover {
+  color: var(--signal);
+}
+
+.sub-cap .crumb b {
+  color: var(--paper);
+  font-weight: 700;
+}
 
 .sub-cap h1 {
-  font-family: var(--mono);
+  font-family: var(--display);
   font-weight: 700;
-  font-size: clamp(1.7rem, 4.5vw, 2.5rem);
-  letter-spacing: -0.01em;
-  margin: 0 0 1.75rem;
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  letter-spacing: -.045em;
+  line-height: 1.12;
+  margin: 0 0 1rem;
   color: var(--paper);
+  max-width: 20ch;
+}
+
+.sub-cap .intro {
+  font-size: 1rem;
+  color: var(--text);
+  line-height: 1.75;
+  margin: 0 0 1.35rem;
+  max-width: 78ch;
 }
 
 .sub-cap .kanban-link {
-  font-family: var(--mono);
-  font-size: 0.8rem;
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  font-size: .85rem;
+  font-weight: 700;
   color: var(--paper);
   text-decoration: none;
-  border-bottom: 1px solid var(--signal);
-  display: inline-block;
-  margin-bottom: 1.75rem;
+  border: 1px solid var(--signal);
+  background: var(--signal-soft);
+  border-radius: .7rem;
+  padding: .7rem 1rem;
+  margin-bottom: 2rem;
+}
+
+.sub-cap .kanban-link:hover {
+  background: #24534d;
 }
 
 .sub-cap .board-label {
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  font-family: var(--display);
+  font-size: .8rem;
+  font-weight: 700;
+  letter-spacing: .12em;
   text-transform: uppercase;
-  color: var(--text-muted);
-  padding: 0 0.25rem 0.6rem;
+  color: var(--signal);
+  padding: 0 0 .75rem;
+  margin: 2rem 0 0;
+}
+
+.sub-cap .board-label::after {
+  content: "";
+  height: 1px;
+  background: var(--hairline);
+  flex: 1;
 }
 
 .sub-cap .board {
   border: 1px solid var(--hairline);
-  border-radius: 0.85rem;
+  border-radius: 1rem;
   overflow: hidden;
-  margin-bottom: 1rem;
+  margin: 0 0 1.25rem;
+  background: var(--surface);
 }
 
-.sub-cap .sub-row {
-  display: block;
+.sub-cap .priorities {
+  list-style: none;
+  counter-reset: priority;
+  margin: 0 0 1.5rem;
+  padding: 0;
+}
+
+.sub-cap .priorities li {
+  counter-increment: priority;
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr);
+  gap: .5rem 1rem;
   padding: 1.15rem 1.25rem;
   background: var(--surface);
   border-bottom: 1px solid var(--hairline);
 }
-.sub-cap .sub-row:last-child { border-bottom: none; }
+
+.sub-cap .priorities li:last-child {
+  border-bottom: none;
+}
+
+.sub-cap .priorities li::before {
+  content: counter(priority, decimal-leading-zero);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: .15rem;
+  color: var(--gold);
+  font-family: var(--display);
+  font-size: .85rem;
+  font-weight: 700;
+}
+
+.sub-cap .priorities h3,
+.sub-cap .sub-row h3,
+.sub-cap .note-card h3,
+.sub-cap .plan-block h3 {
+  font-family: var(--display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--paper);
+  line-height: 1.35;
+  margin: 0 0 .4rem;
+}
+
+.sub-cap .priorities p {
+  font-size: .9rem;
+  color: var(--text-muted);
+  line-height: 1.65;
+  margin: 0 0 .45rem;
+}
+
+.sub-cap .priorities .owner {
+  font-size: .78rem;
+  color: var(--text-muted);
+  margin: .6rem 0 0;
+}
+
+.sub-cap .priorities .owner b {
+  color: var(--paper);
+  font-weight: 700;
+}
+
+.sub-cap .sub-row {
+  display: block;
+  padding: 1.25rem 1.4rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.sub-cap .sub-row:last-child {
+  border-bottom: none;
+}
 
 .sub-cap .sub-row h3 {
-  font-family: var(--mono);
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--paper);
-  margin: 0 0 0.3rem;
+  margin-bottom: .25rem;
 }
 
 .sub-cap .sub-row .team {
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  color: var(--text-muted);
-  margin: 0 0 0.5rem;
+  display: inline-block;
+  font-size: .75rem;
+  font-weight: 700;
+  color: var(--blue);
+  margin: 0 0 .65rem;
 }
 
 .sub-cap .sub-row p.desc {
-  font-size: 0.85rem;
+  font-size: .9rem;
   color: var(--text-muted);
-  line-height: 1.55;
-  margin: 0 0 0.5rem;
+  line-height: 1.65;
+  margin: 0 0 .6rem;
+  max-width: 85ch;
+}
+
+.sub-cap .tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .4rem;
+  margin: 0 0 .75rem;
+}
+
+.sub-cap .tag {
+  display: inline-flex;
+  font-size: .7rem;
+  font-weight: 700;
+  color: var(--signal);
+  background: var(--signal-soft);
+  border: 1px solid #2c5c54;
+  border-radius: 999px;
+  padding: .2rem .65rem;
 }
 
 .sub-cap .sub-row .link {
-  font-family: var(--mono);
-  font-size: 0.78rem;
-  font-weight: 600;
+  display: inline-block;
+  font-size: .8rem;
+  font-weight: 700;
   color: var(--paper);
   text-decoration: none;
   border-bottom: 1px solid var(--signal);
+  padding-bottom: 2px;
   white-space: nowrap;
 }
 
-.sub-cap .grading-label {
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+.sub-cap .sub-row .link:hover {
+  color: var(--signal);
+}
+
+.sub-cap .notes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .85rem;
+  margin: 0 0 1.75rem;
+}
+
+.sub-cap .note-card {
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-top: 3px solid var(--blue);
+  border-radius: .9rem;
+  padding: 1.15rem 1.15rem 1.25rem;
+  min-width: 0;
+}
+
+.sub-cap .note-card:nth-child(2) {
+  border-top-color: var(--signal);
+}
+
+.sub-cap .note-card:nth-child(3) {
+  border-top-color: var(--gold);
+}
+
+.sub-cap .note-card h3 {
+  margin-bottom: .7rem;
+}
+
+.sub-cap .note-card ul {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.sub-cap .note-card li {
+  font-size: .85rem;
   color: var(--text-muted);
-  padding: 0 0.25rem 0.6rem;
+  line-height: 1.65;
+  margin-bottom: .55rem;
+}
+
+.sub-cap .note-card li:last-child {
+  margin-bottom: 0;
+}
+
+.sub-cap .plan-block {
+  margin-bottom: 1.5rem;
+}
+
+.sub-cap .plan-block:last-child {
+  margin-bottom: 0;
+}
+
+.sub-cap .plan-block p {
+  font-size: .9rem;
+  color: var(--text);
+  line-height: 1.7;
+  margin: 0;
+  max-width: 75ch;
+}
+
+.sub-cap .plan-block strong {
+  color: var(--paper);
+}
+
+.sub-cap .grading-label {
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--signal);
+  padding: 0 0 .75rem;
+  margin-top: 2rem;
 }
 
 .sub-cap .grading-img {
   border: 1px solid var(--hairline);
-  border-radius: 0.85rem;
+  border-radius: .9rem;
   overflow: hidden;
-  margin: 0 0 1.75rem;
-  max-width: 320px;
+  margin: 0 0 1.25rem;
+  max-width: 380px;
+  background: var(--surface);
 }
+
 .sub-cap .grading-img img {
   display: block;
   width: 100%;
   height: auto;
 }
 
-.sub-cap .plan-block {
-  margin-bottom: 1.5rem;
-}
-.sub-cap .plan-block:last-child { margin-bottom: 0; }
-
-.sub-cap .plan-block h3 {
-  font-family: var(--mono);
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--paper);
-  margin: 0 0 0.5rem;
+.sub-cap code {
+  color: #b8d8ff;
+  background: #23364a;
+  border-radius: .3rem;
+  padding: .08rem .3rem;
+  font-size: .9em;
 }
 
-.sub-cap .plan-block p {
-  font-size: 0.85rem;
-  color: var(--text);
-  line-height: 1.65;
-  margin: 0;
-  max-width: 68ch;
+@media (max-width: 760px) {
+  .sub-cap .notes {
+    grid-template-columns: 1fr;
+  }
 }
 
-.sub-cap .plan-block strong { color: var(--paper); }
+@media (max-width: 480px) {
+  .sub-cap {
+    padding: 1.25rem 1rem 1.5rem;
+    border-radius: 1rem;
+  }
+
+  .sub-cap .sub-row,
+  .sub-cap .priorities li {
+    padding: 1rem;
+  }
+
+  .sub-cap .priorities li {
+    grid-template-columns: 2rem minmax(0, 1fr);
+    gap: .5rem;
+  }
+
+  .sub-cap .kanban-link {
+    max-width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sub-cap a {
+    transition: none;
+  }
+}
 </style>
 
 <div class="sub-cap">
@@ -170,54 +392,149 @@
 
   <h1>OCS Assignments System</h1>
 
+  <p class="intro">The goal right now is to make grading faster and more trustworthy, and to let teachers do everything they need from the Pages frontend without digging into the Spring admin views. Below are the six things we're focused on, who's working on what, and the design notes we're working from.</p>
+
   <a href="https://github.com/orgs/AAApages/projects/1/views/1" class="kanban-link" target="_blank" rel="noopener">Track progress on the Kanban board →</a>
 
-  <p class="board-label">Sub-projects</p>
+  <p class="board-label">Current priorities</p>
+
+  <ol class="board priorities">
+    <li>
+      <div>
+        <h3>Faster grading with your own AI key</h3>
+        <p>Graders add their own Gemini key so AI grading isn't stuck waiting on one shared key.</p>
+        <p class="owner">Owner: <b>Aditya</b></p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <h3>Fix, build, and standardize lessons with CRUD</h3>
+        <p>Add and delete operations so lessons can be cleaned up and kept consistent, instead of being patched one by one.</p>
+        <p class="owner">Owners: <b>Rishabh</b> (CSSE lesson) &middot; <b>Aneesh</b> (Units 1 + 2)</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <h3>Grading corrections from the admin page</h3>
+        <p>Example: a CSSE object literals lesson had a nested conditionals permalink, and that wrong link got saved in the database. Resubmitting doesn't fix the record because the submission process never updates it, so admins need a way to correct it from the admin page.</p>
+        <p class="owner">Owners: <b>William + Nick</b> &middot; <b>Katherine + Bridget</b></p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <h3>Data collection for self-assessment</h3>
+        <p>Collecting the data that self-assessment will be built on before it goes back into OCS.</p>
+        <p class="owner">Owner: <b>Jacob</b></p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <h3>Using OCS AI</h3>
+        <p>Deciding whether grading goes through an OCS AI API or another option.</p>
+        <p class="owner">Owner: <b>Whole team</b> &middot; approach still being decided</p>
+      </div>
+    </li>
+    <li>
+      <div>
+        <h3>Aaryav's <code>omake</code></h3>
+        <p>Speeding up make run time. This is on the agenda for the second mentor meeting.</p>
+        <p class="owner">Owner: <b>Aaryav</b></p>
+      </div>
+    </li>
+  </ol>
+
+  <p class="board-label">Who's working on what</p>
 
   <div class="board">
 
     <div class="sub-row">
-      <h3>Assignment Creator Permissions</h3>
-      <p class="team">Aneesh Deevi &middot; Aditya Srivastava &middot; Aaryav Lal</p>
-      <p class="desc">Lets any signed-in student create and manage their own assignment, without needing a teacher or admin role.</p>
-      <a href="{{ '/capstone/AAA/' | relative_url }}" class="link">View project →</a>
+      <h3>AI Grading with Your Own Key</h3>
+      <p class="team">Aditya</p>
+      <div class="tags"><span class="tag">#1 Faster grading</span><span class="tag">#5 OCS AI</span></div>
+      <p class="desc">Letting each assignment be AI-graded with a key the user uploads from Gemini or Claude. Every assignment's AI grade is out of 1 point.</p>
+      <a href="{{ '/capstone/work-submission-grading/' | relative_url }}" class="link">View project →</a>
     </div>
 
     <div class="sub-row">
-      <h3>Submission Analytics</h3>
-      <p class="team">Katherine &middot; Jacob &middot; Bridget</p>
-      <p class="desc">Reworks the OCS and GitHub analytics pages to better reflect progress and improvement, and adds self-assessment categories for grading and a fuller picture of each student.</p>
+      <h3>Student Grades Alongside AI Grades + Make Run Time</h3>
+      <p class="team">Aaryav</p>
+      <div class="tags"><span class="tag">#6 omake</span></div>
+      <p class="desc">Letting a student grade go in next to the AI grade without overwriting it. Separately, cutting down make run time with <code>omake</code>.</p>
+    </div>
+
+    <div class="sub-row">
+      <h3>CSSE Lesson Fix</h3>
+      <p class="team">Rishabh</p>
+      <div class="tags"><span class="tag">#2 Lessons</span><span class="tag">#3 Corrections</span></div>
+      <p class="desc">Fixing the CSSE lesson behind the mismatched permalink, so new submissions land on the right lesson.</p>
+    </div>
+
+    <div class="sub-row">
+      <h3>Kanban, Admin Dashboard + Student Success Insights</h3>
+      <p class="team">Katherine &middot; Bridget</p>
+      <div class="tags"><span class="tag">#3 Corrections</span></div>
+      <p class="desc">Keeping the Kanban board and this capstone page up to date, organizing the admin dashboard and the Spring backend behind it, and building Student Success Insights.</p>
       <a href="{{ '/capstone/analytics_selfassessment/' | relative_url }}" class="link">View project →</a>
     </div>
 
     <div class="sub-row">
-      <h3>AI Grading</h3>
-      <p class="team">Nicolas Diaz &middot; William Windle &middot; Rishabh Jha</p>
-      <p class="desc">An AI-graded pipeline (Gemini API) for MC, FRQ, and GitHub Issue submissions, moving scores and feedback out of a spreadsheet and into a database admins can browse.</p>
-      <a href="{{ '/capstone/work-submission-grading/' | relative_url }}" class="link">View project →</a>
+      <h3>Admin Dashboard: Assignments by Year</h3>
+      <p class="team">William &middot; Nick</p>
+      <div class="tags"><span class="tag">#3 Corrections</span></div>
+      <p class="desc">Organizing assignments by year in the admin dashboard. There are about 20 pages of assignments from several years, so the focus is on making them easy to find and fix.</p>
+    </div>
+
+    <div class="sub-row">
+      <h3>Unit 1 + 2 Teaching</h3>
+      <p class="team">Aneesh</p>
+      <div class="tags"><span class="tag">#2 Lessons</span></div>
+      <p class="desc">Units 1 and 2 still need to be taught. This means working out the schedule and trying a new way of teaching lessons to get more engagement. Right now the focus is the homework for Mort's data structures lesson.</p>
+    </div>
+
+    <div class="sub-row">
+      <h3>Self-Assessment Rework</h3>
+      <p class="team">Jacob</p>
+      <div class="tags"><span class="tag">#4 Self-assessment</span></div>
+      <p class="desc">Taking self-grading out for now and reworking it, using the data being collected, before it goes back into OCS.</p>
+      <a href="{{ '/capstone/analytics_selfassessment/' | relative_url }}" class="link">View project →</a>
     </div>
 
   </div>
 
-  <p class="grading-label">Grading requirements</p>
+  <p class="board-label">Design notes</p>
 
-  <div class="grading-img">
-    <img src="{{ '/images/capstone/submissions-grading-rubric.jpg' | relative_url }}" alt="Handwritten grading rubric: 0% no plan, 55% no plan/no code, 80% sucky code/great plan, ~88-90% good code/good plan, 92% great code/great plan">
-  </div>
+  <div class="notes">
 
-  <div class="plan-block">
-    <h3>Assignment Creator Permissions</h3>
-    <p>The plan is the permission matrix on the project page itself: who can do what, enforced server-side, re-checked at edit time, and covered by a concurrency test. Because both the plan and the shipped code are complete and documented, this sub-project is closer to Great Code / Great Plan than the Good/Good tier we're using as our floor.</p>
-  </div>
+    <div class="note-card">
+      <h3>Spring backend</h3>
+      <ul>
+        <li>The "view grades" page in Spring has gotten huge. Teachers would be better served by a teacher view on the frontend.</li>
+        <li>Leave the legacy pages in place rather than ripping them out.</li>
+        <li>Grading still needs a proper design before more gets built on it.</li>
+        <li>The assignment tracker spans about 20 pages across several years. Starting from scratch would be cleaner but is too much work, so we're improving what's there.</li>
+        <li>AI grading uses a rubric out of 1 point.</li>
+        <li>Add only the CRUD operations admins actually need, not every possible one.</li>
+      </ul>
+    </div>
 
-  <div class="plan-block">
-    <h3>Submission Analytics</h3>
-    <p>The plan is the six analytics features scoped on the project page, split cleanly into what's live and what's tracked as open GitHub issues (API integration, heatmap caching, form validation, and more). Six of six features are already live, with the remaining work named and tracked rather than left vague &mdash; a documented plan is what keeps this at Good Code / Good Plan while those issues close out.</p>
-  </div>
+    <div class="note-card">
+      <h3>Pages frontend</h3>
+      <ul>
+        <li>Submission screens for both graders and teachers.</li>
+        <li>Teachers should only ever need the frontend to do their work.</li>
+        <li>That includes starting AI grading from the frontend.</li>
+      </ul>
+    </div>
 
-  <div class="plan-block">
-    <h3>AI Grading</h3>
-    <p>No code has been written yet, so the plan is doing all the work here: submission types, grading flow, and storage design are fully written out on the project page, and it's explicitly labeled a planning-stage proposal rather than something claiming to be further along than it is. That's the difference between landing at 0% (no plan) and having a real shot at Good Plan once the build catches up.</p>
+    <div class="note-card">
+      <h3>How we're working</h3>
+      <ul>
+        <li>PRs should remove sharp edges, not add band-aids.</li>
+        <li>An AI grade and a student or grader grade should sit side by side. Neither one overwrites the other.</li>
+        <li>Fix bad data at the source. If a record is wrong, there should be an admin way to correct it.</li>
+      </ul>
+    </div>
+
   </div>
 
 </div>

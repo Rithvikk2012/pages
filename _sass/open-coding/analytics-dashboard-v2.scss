@@ -1,0 +1,407 @@
+// Page-scoped styles for /analytics-dashboard/v2 (_layouts/analytics-dashboard-v2.html).
+//
+// This page's JavaScript (one continuous inline <script type="module">,
+// plus the external assets/js/ocs-analytics-dashboard.js which owns the
+// OCS Analytics tab's real content) is copied/left verbatim and is NOT
+// edited here. A handful of class names below are read directly by that
+// JS (classList.add/remove/toggle, querySelectorAll) — they keep their
+// original literal names on purpose, each marked below.
+
+.ocs__analytics-page {
+    width: 100%;
+}
+
+.ocs__analytics-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.ocs__analytics-tabbar {
+    position: relative;
+    border-bottom: 1px solid var(--ui-border);
+}
+
+.ocs__analytics-tabbar-list {
+    display: flex;
+    flex-wrap: wrap;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+// JS hook: querySelectorAll('.tab-btn') finds these; classList
+// add/remove("active", "text-blue-500", "border-blue-500") marks the
+// active tab across all 4 tabs.
+.ocs__analytics-tab-btn {
+    display: inline-block;
+    padding: 1rem;
+    border-bottom: 2px solid transparent;
+    color: var(--text-muted);
+    text-decoration: none;
+
+    &:hover {
+        color: var(--pref-text-color);
+        border-color: color-mix(in srgb, var(--pref-text-color) 24%, transparent);
+    }
+
+    &.active.text-blue-500 {
+        color: var(--pref-accent-color);
+    }
+
+    &.active.border-blue-500 {
+        border-color: var(--pref-accent-color);
+    }
+}
+
+.ocs__analytics-tab-underline {
+    background: var(--pref-accent-color);
+}
+
+.ocs__analytics-tab-content-container {
+    position: relative;
+    min-height: 400px;
+}
+
+// JS hook: querySelectorAll('.tab-content') finds these; classList
+// add/remove("hidden", "block") switches the visible pane.
+.ocs__analytics-tab-content {
+    padding: 1.5rem 0;
+    color: var(--pref-text-color);
+}
+
+.ocs__analytics-page-title {
+    margin-bottom: 1rem;
+}
+
+.ocs__analytics-card-spaced {
+    margin-top: 1.5rem;
+}
+
+.ocs__analytics-card-spaced-sm {
+    margin-top: 0.75rem;
+}
+
+.ocs__analytics-card-desc {
+    margin-bottom: 1rem;
+}
+
+.ocs__analytics-fineprint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.ocs__analytics-eyebrow {
+    margin: 0 0 0.5rem;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+}
+
+.ocs__analytics-eyebrow-row {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.ocs__analytics-stat-value {
+    margin: 0;
+    color: var(--pref-text-color);
+    font-size: 1.5rem;
+    font-weight: 500;
+}
+
+// .ocs__label and .ocs__grid--col2 now come from the shared grammar
+// (elements/forms/labels, elements/grids) instead of being duplicated
+// here.
+
+.ocs__analytics-full-width {
+    width: 100%;
+}
+
+.ocs__analytics-column {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+// Loading spinner used on the OCS Analytics placeholder and the Skill
+// Passport loading state.
+.ocs__analytics-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    text-align: center;
+}
+
+.ocs__analytics-spinner {
+    width: 3rem;
+    height: 3rem;
+    margin: 0 auto 1rem;
+    border: 3px solid color-mix(in srgb, var(--pref-text-color) 16%, transparent);
+    border-bottom-color: var(--pref-accent-color);
+    border-radius: 50%;
+    animation: ocs__analytics-spin 0.75s linear infinite;
+}
+
+@keyframes ocs__analytics-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.ocs__analytics-stat-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+
+    @media (min-width: $breakpoint-mobile) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    @media (min-width: 1024px) {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-rows: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.ocs__analytics-avatar-card {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    @media (min-width: 1024px) {
+        grid-row: span 2;
+    }
+}
+
+.ocs__analytics-avatar {
+    width: 8rem;
+    height: 8rem;
+    border-radius: 0.75rem;
+    object-fit: cover;
+}
+
+.ocs__analytics-profile-card {
+    @media (min-width: 1024px) {
+        grid-row: span 2;
+    }
+}
+
+.ocs__analytics-tile-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.ocs__analytics-commits-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+
+    @media (min-width: 1024px) {
+        flex-direction: row;
+    }
+}
+
+.ocs__analytics-period-sidebar {
+    flex-shrink: 0;
+
+    @media (min-width: 1024px) {
+        width: 13rem;
+    }
+}
+
+// Buttons inside #commit-period-options are created dynamically in JS
+// with their own literal Tailwind className (BTN_ON/BTN_OFF) — out of
+// scope for this restyle, only the wrapper's layout is ours to style.
+.ocs__analytics-period-options {
+    display: flex;
+    flex-direction: row;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+
+    @media (min-width: 1024px) {
+        flex-direction: column;
+        overflow-x: visible;
+    }
+}
+
+.ocs__analytics-chart-col {
+    flex: 1;
+    min-width: 0;
+}
+
+.ocs__analytics-commit-cards {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+
+    @media (min-width: $breakpoint-mobile) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    @media (min-width: 1024px) {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+.ocs__analytics-flex-card {
+    display: flex;
+    flex-direction: column;
+}
+
+.ocs__analytics-card-heading {
+    margin: 0 0 0.5rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+}
+
+.ocs__analytics-heading-blue {
+    color: var(--pref-accent-color);
+}
+
+.ocs__analytics-heading-green {
+    color: var(--green, #22c55e);
+}
+
+.ocs__analytics-formula {
+    margin: 0 0 0.5rem;
+    padding: 0.75rem;
+    border-radius: 0.375rem;
+    background: var(--panel-mid, var(--panel));
+    color: var(--pref-text-color);
+    font-family: 'Source Code Pro', monospace;
+    font-size: 0.75rem;
+    overflow-x: auto;
+}
+
+.ocs__analytics-result-text {
+    margin: 0;
+    color: var(--pref-text-color);
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.ocs__analytics-slider-form {
+    margin-bottom: 1.5rem;
+}
+
+.ocs__analytics-help-title {
+    margin: 0 0 1rem;
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.ocs__analytics-help-summary {
+    cursor: pointer;
+    margin-bottom: 0.5rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+}
+
+.ocs__analytics-help-callout {
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    background: color-mix(in srgb, var(--pref-accent-color) 12%, var(--panel));
+    border: 1px solid color-mix(in srgb, var(--pref-accent-color) 40%, transparent);
+    color: var(--pref-text-color);
+}
+
+.ocs__analytics-help-subheading {
+    margin: 2rem 0 0.5rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.ocs__analytics-help-list {
+    margin: 0 0 1rem;
+    padding-left: 1.25rem;
+    list-style: disc;
+    color: var(--pref-text-color);
+}
+
+.ocs__analytics-empty-state {
+    padding: 4rem 0;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.ocs__analytics-empty-title {
+    margin: 0 0 0.25rem;
+    font-size: 1.125rem;
+    color: var(--pref-text-color);
+}
+
+.ocs__analytics-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+// JS hook: classList.add/remove("hidden") shows/hides this modal — keep
+// literal. Positioning/backdrop chrome (not JS-coupled) lives here.
+.ocs__analytics-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.6);
+}
+
+.ocs__analytics-modal-card {
+    position: relative;
+    width: 100%;
+    max-width: 48rem;
+    max-height: 24rem;
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    background: var(--panel);
+    border: 1px solid var(--ui-border);
+}
+
+// JS hook: dataModal.querySelector(".close") finds this exact class —
+// keep literal.
+.ocs__analytics-modal-close {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    font-size: 1.5rem;
+    line-height: 1;
+    color: var(--text-muted);
+    cursor: pointer;
+
+    &:hover {
+        color: var(--pref-text-color);
+    }
+}
+
+.ocs__analytics-modal-body {
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 1rem;
+}
+
+.ocs__analytics-modal-pre {
+    margin: 0;
+    color: var(--pref-text-color);
+    font-size: 0.875rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+// Declared last on purpose: .hidden and several classes above (the modal
+// overlay) are single-class selectors of equal specificity, so source
+// order decides which `display` wins when both are present on one
+// element. Keep this rule last in the file so .hidden's display:none
+// always wins.
+.hidden {
+    display: none;
+}

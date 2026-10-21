@@ -254,6 +254,54 @@ These shared classes are used by the RFID and Jarvis capstone documents:
 
 See [`elements/capstone`](elements/capstone).
 
+### Kanban board
+
+A smart card that shows a team's GitHub project board, live, on any page. Give
+it the board's link and it builds itself from that board:
+
+```liquid
+{% include ocs_kanban_board.html url="https://github.com/orgs/UGRC-CSA/projects/1" filter="Team" %}
+```
+
+- `url` (required): a public board owned by an organization
+  (`github.com/orgs/...`). The page reads it from GitHub's REST API without
+  signing in; GitHub keeps a personal board's cards for signed-in users.
+- `filter` (optional): a single-select field, such as `Team`. Each option that
+  has cards becomes a filter button. An option named Everyone or All is for
+  shared cards, which show under every button.
+- `title` (optional): a heading to use instead of the board's own name.
+
+Everything else comes from the board, so any board works as it is. Columns
+follow the board's own order: familiar names share a stage's column ("Todo",
+"To Do" and "Ready" are all To do, "Blocked" is In progress), any other column
+keeps its own name, and cards with no status get a "No status" column, as on
+GitHub. A Backlog column starts hidden behind a toggle, and so does No status on
+a board that has a Backlog of its own. Only UGRC-CSA's note columns ("Team Map",
+"Reflections") are left out. Cards show their number, a `People` field or the
+assignees, and once done, a `Shipped` date or the day they closed. The board
+keeps a copy for 10 minutes, because visitors without a token share 60 GitHub
+requests an hour per network, and keeps showing that copy, with a note, when
+GitHub doesn't answer.
+
+Kanban classes (`assets/js/kanban-board.js` builds them):
+
+- `ocs__kanban-board`: the stage columns, side by side. A column is at least
+  11.5rem wide (or the whole board on a phone); past that the board scrolls sideways.
+- `ocs__kanban-column`: one column. Its `data-stage` colors the line across its
+  top, with more accent the closer the stage is to done; a column of the board's
+  own name gets backlog's quiet line.
+- `ocs__kanban-item`: a card, with `ocs__kanban-kicker`, `ocs__kanban-name` and
+  `ocs__kanban-note` for its three lines.
+
+The names avoid the suffixes `_sass/capstone/infograph.scss` restyles (`-card`,
+`-title` and others), so the board looks the same inside a capstone's
+`*-infograph` include. The filter buttons, backlog toggle and counts are
+`ocs__btn`, `ocs__toggle` and `ocs__status-pill`.
+
+See [`elements/kanban`](elements/kanban) and
+[`ocs_kanban_board.html`](../../_includes/ocs_kanban_board.html). The
+Communication Systems capstone shows the UGRC-CSA board this way.
+
 ## Theme file reference
 
 `user-preferences.scss` defines the current user-selectable theme contract.

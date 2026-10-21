@@ -1,0 +1,341 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+
+import {
+    BoardError, cacheState, columnCards, filterCards, normalizeBoard, parseBoardUrl, pickFields, readEntry, refreshBoard,
+    stageOf, writeEntry,
+} from '../assets/js/kanban-board.js';
+
+// Shaped like GitHub's REST projectsV2 responses (fields, items), trimmed to
+// one small board: UGRC-CSA's columns and its Team / People / Shipped fields.
+const BOARD_URL = 'https://github.com/orgs/UGRC-CSA/projects/1';
+const API = 'https://api.github.com/orgs/UGRC-CSA/projectsV2/1';
+const MINUTE = 60 * 1000;
+
+const option = (name) => ({ id: name.length.toString(16), name: { raw: name, html: name }, description: { raw: '', html: '' }, color: 'GRAY' });
+
+const PROJECT = { id: 25546066, number: 1, title: 'UGRC-CSA — Team Kanban', public: true, updated_at: '2026-10-15T16:49:43Z' };
+const FIELDS = [
+    { id: 1, name: 'Title', data_type: 'title' },
+    { id: 2, name: 'Assignees', data_type: 'assignees' },
+    { id: 3, name: 'Status', data_type: 'single_select', options: ['📌 Team Map', '💡 Backlog', '📋 To Do', '🚧 In Progress', '👀 In Review', '✅ Done', '🪞 Reflections'].map(option) },
+    { id: 4, name: 'Team', data_type: 'single_select', options: ['Chat + Calendar', 'SASS', 'DMs', 'Everyone'].map(option) },
+    { id: 5, name: 'People', data_type: 'multi_select', options: ['Sathwik', 'Samarth', 'Tarun'].map(option) },
+    { id: 6, name: 'Shipped', data_type: 'date' },
+];
+
+const statusValue = (name) => ({ id: 3, name: 'Status', data_type: 'single_select', value: name ? option(name) : null });
+const teamValue = (name) => ({ id: 4, name: 'Team', data_type: 'single_select', value: option(name) });
+const peopleValue = (...names) => ({ id: 5, name: 'People', data_type: 'multi_select', value: { options: names.map(option) } });
+
+function item(id, contentType, content, fields, updatedAt) {
+    return {
+        id, node_id: `PVTI_${id}`, project_url: API, content_type: contentType, content,
+        creator: { login: 'Wick2009' }, created_at: '2026-10-14T02:00:00Z', updated_at: updatedAt,
+        archived_at: null, item_url: `${API}/items/${id}`, fields,
+    };
+}
+
+const draft = (title) => ({ id: 1, title, body: 'Draft body', created_at: '2026-10-13T19:20:54.000-07:00', updated_at: '2026-10-14T00:35:03.000-07:00', user: { login: 'Wick2009' } });
+
+const ISSUE = item(101, 'Issue', {
+    number: 25, title: 'Class-wide + per-week chat', html_url: 'https://github.com/UGRC-CSA/Pages/issues/25',
+    state: 'closed', closed_at: '2026-10-10T18:00:00Z', assignees: [],
+}, [statusValue('✅ Done'), teamValue('Chat + Calendar'), peopleValue('Sathwik'),
+    { id: 6, name: 'Shipped', data_type: 'date', value: '2026-10-09T00:00:00+00:00' }], '2026-10-14T02:20:00Z');
+const SASS_DRAFT = item(102, 'DraftIssue', draft('Lesson sidebar on ocs__tree'),
+    [statusValue('🚧 In Progress'), teamValue('SASS'), peopleValue('Samarth', 'Tarun')], '2026-10-15T16:49:43Z');
+const TEAM_MAP = item(103, 'DraftIssue', draft('Start here: who is working on what'),
+    [statusValue('📌 Team Map'), teamValue('Everyone')], '2026-10-16T00:00:00Z');
+const SHARED_DRAFT = item(104, 'DraftIssue', draft('Sprint 3 team plan issue'),
+    [statusValue('📋 To Do'), teamValue('Everyone')], '2026-10-14T03:00:00Z');
+const PULL = item(105, 'PullRequest', {
+    number: 1800, title: 'Calendar owner check', html_url: 'https://github.com/Open-Coding-Society/pages/pull/1800',
+    state: 'open', closed_at: null, merged_at: null, assignees: [{ login: 'Wick2009' }],
+}, [statusValue('👀 In Review'), teamValue('Chat + Calendar')], '2026-10-14T04:00:00Z');
+const ITEMS = [ISSUE, SASS_DRAFT, TEAM_MAP, SHARED_DRAFT, PULL];
+
+/* ── Stages, URLs, fields ────────────────────────────────────────────── */
+
+test('statuses from different boards land on the shared stages, and non-work columns are hidden', () => {
+    const cases = {
+        '📋 To Do': 'todo', '🚧 In Progress': 'doing', '👀 In Review': 'review', '✅ Done': 'done',
+        '💡 Backlog': 'backlog', Todo: 'todo', Planning: 'backlog', '': 'backlog',
+        '📌 Team Map': null, '🪞 Reflections': null,
+    };
+    for (const [status, stage] of Object.entries(cases)) assert.equal(stageOf(status), stage, status);
+    assert.equal(stageOf(null), 'backlog');
+});
+
+test('blocked or waiting work stays in progress and released work is done, instead of disappearing', () => {
+    const cases = {
+        '🚫 Blocked': 'doing', 'On hold': 'doing', 'Waiting on mentor': 'doing', Stuck: 'doing',
+        'Waiting for review': 'review', Released: 'done', Deployed: 'done', Finished: 'done', Resolved: 'done',
+    };
+    for (const [status, stage] of Object.entries(cases)) assert.equal(stageOf(status), stage, status);
+});
+
+test('board addresses become API paths; anything that is not a GitHub project is refused', () => {
+    const org = { apiPath: 'orgs/UGRC-CSA/projectsV2/1', url: BOARD_URL, personal: false };
+    assert.deepEqual(parseBoardUrl(BOARD_URL), org);
+    assert.deepEqual(parseBoardUrl('https://github.com/orgs/UGRC-CSA/projects/1/views/2?pane=x'), org);
+    assert.deepEqual(parseBoardUrl('https://github.com/orgs/UGRC-CSA/projects/1/'), org);
+    // GitHub answers 401 for a personal board's items without a token, so the
+    // embed has to know a board is personal before it asks.
+    assert.deepEqual(parseBoardUrl('https://github.com/users/Ahaanv19/projects/1'),
+        { apiPath: 'users/Ahaanv19/projectsV2/1', url: 'https://github.com/users/Ahaanv19/projects/1', personal: true });
+    assert.equal(parseBoardUrl('https://github.com/UGRC-CSA/Pages'), null);
+    assert.equal(parseBoardUrl('https://example.com/orgs/UGRC-CSA/projects/1'), null);
+    assert.equal(parseBoardUrl('not a url'), null);
+});
+
+test('fields are found by name in any case, and a filter the board lacks is left out', () => {
+    const picked = pickFields(FIELDS, 'team');
+    assert.deepEqual(picked.status, { id: 3, name: 'Status', options: ['📌 Team Map', '💡 Backlog', '📋 To Do', '🚧 In Progress', '👀 In Review', '✅ Done', '🪞 Reflections'] });
+    assert.deepEqual(picked.group, { id: 4, name: 'Team', options: ['Chat + Calendar', 'SASS', 'DMs', 'Everyone'] });
+    assert.equal(picked.people.id, 5);
+    assert.equal(picked.shipped.id, 6);
+    assert.equal(pickFields(FIELDS, 'Squad').group, null);
+    // A board whose status field has another name still gets columns.
+    const stage = { id: 9, name: 'Stage', data_type: 'single_select', options: [option('Todo')] };
+    assert.equal(pickFields([FIELDS[0], stage]).status.id, 9);
+});
+
+/* ── Normalizing ─────────────────────────────────────────────────────── */
+
+test('a board keeps its work cards with links, groups, people and shipped dates', () => {
+    const board = normalizeBoard({ project: PROJECT, fields: FIELDS, items: ITEMS }, { filterName: 'Team', url: BOARD_URL });
+    assert.equal(board.title, 'UGRC-CSA — Team Kanban');
+    assert.equal(board.url, BOARD_URL);
+    assert.deepEqual(board.cards.map((c) => c.title),
+        ['Class-wide + per-week chat', 'Lesson sidebar on ocs__tree', 'Sprint 3 team plan issue', 'Calendar owner check']);
+    assert.deepEqual(board.cards.map((c) => c.stage), ['done', 'doing', 'todo', 'review']);
+
+    const [issue, sass, shared, pull] = board.cards;
+    assert.equal(issue.url, 'https://github.com/UGRC-CSA/Pages/issues/25');
+    assert.equal(issue.number, 25);
+    assert.equal(issue.shipped, '2026-10-09');
+    assert.equal(issue.group, 'Chat + Calendar');
+    assert.equal(sass.url, `${BOARD_URL}?pane=issue&itemId=102`);
+    assert.equal(sass.number, null);
+    assert.deepEqual(sass.people, ['Samarth', 'Tarun']);
+    assert.equal(shared.group, 'Everyone');
+    assert.deepEqual(pull.people, ['Wick2009']);
+    assert.equal(pull.shipped, null);
+
+    // Columns follow the board's Status options in order; Team Map and
+    // Reflections are left out, and no card is missing a status.
+    assert.deepEqual(board.columns.map((c) => c.label), ['Backlog', 'To do', 'In progress', 'In review', 'Done']);
+    assert.deepEqual(board.columns.map((c) => c.toggle), [true, false, false, false, false]);
+    assert.equal(issue.column, 'done');
+
+    // DMs has no card on this board, so it gets no filter button.
+    assert.deepEqual(board.groups, ['Chat + Calendar', 'SASS']);
+    assert.deepEqual(board.shared, ['Everyone']);
+    // The hidden Team Map card changed last, but it isn't on the embed.
+    assert.equal(board.updated, '2026-10-15T16:49:43Z');
+});
+
+test('a done card without a Shipped date uses the day its issue closed', () => {
+    const closed = item(106, 'Issue', { ...ISSUE.content, closed_at: '2026-10-12T03:00:00Z' }, [statusValue('✅ Done')], '2026-10-12T03:00:00Z');
+    const [card] = normalizeBoard({ project: PROJECT, fields: FIELDS, items: [closed] }, { url: BOARD_URL }).cards;
+    assert.equal(card.shipped, '2026-10-12');
+});
+
+test('a card links only to github.com; any other address opens it on the board instead', () => {
+    const odd = item(108, 'Issue', { ...ISSUE.content, html_url: 'javascript:alert(1)' }, [statusValue('📋 To Do')], '2026-10-14T06:00:00Z');
+    const [card] = normalizeBoard({ project: PROJECT, fields: FIELDS, items: [odd] }, { url: BOARD_URL }).cards;
+    assert.equal(card.url, `${BOARD_URL}?pane=issue&itemId=108`);
+});
+
+// GitHub's default board: Todo / In Progress / Done and nothing else.
+const MINIMAL_FIELDS = [
+    { id: 1, name: 'Title', data_type: 'title' },
+    { id: 3, name: 'Status', data_type: 'single_select', options: ['Todo', 'In Progress', 'Done'].map(option) },
+];
+
+test('cards with no status get a No status column, open unless the board has its own Backlog', () => {
+    const noStatus = item(107, 'DraftIssue', draft('Idea'), [statusValue(null)], '2026-10-14T05:00:00Z');
+
+    // A minimal board has nowhere else to put them, so they show first, like GitHub's "No Status".
+    const minimal = normalizeBoard({ project: PROJECT, fields: MINIMAL_FIELDS, items: [noStatus] }, { url: BOARD_URL });
+    assert.deepEqual(minimal.columns.map((c) => c.label), ['No status', 'To do', 'In progress', 'Done']);
+    assert.equal(minimal.columns[0].toggle, false);
+    assert.equal(minimal.cards[0].column, 'none');
+
+    // A board with a Backlog column keeps them behind the Backlog toggle with it.
+    const withBacklog = normalizeBoard({ project: PROJECT, fields: FIELDS, items: [noStatus] }, { url: BOARD_URL });
+    assert.equal(withBacklog.columns[0].label, 'No status');
+    assert.equal(withBacklog.columns[0].toggle, true);
+
+    const empty = normalizeBoard({ project: PROJECT, fields: FIELDS, items: [] }, { filterName: 'Team', url: BOARD_URL });
+    assert.deepEqual(empty.cards, []);
+    assert.equal(empty.updated, null);
+    assert.equal(empty.columns.some((c) => c.key === 'none'), false);
+});
+
+test('a status the stages don\'t know keeps a column of its own name, in the board\'s order', () => {
+    const fields = [{ id: 3, name: 'Status', data_type: 'single_select', options: ['Todo', 'In progress', 'Done', 'Ground 0'].map(option) }];
+    const items = [
+        item(301, 'DraftIssue', draft('Set up the rig'), [statusValue('Todo')], '2026-10-14T00:00:00Z'),
+        item(302, 'DraftIssue', draft('Anvay - Ground 0'), [statusValue('Ground 0')], '2026-10-14T00:00:00Z'),
+        // A status the board no longer lists (its option was deleted) still shows, at the end.
+        item(303, 'DraftIssue', draft('Old idea'), [statusValue('Parking lot')], '2026-10-14T00:00:00Z'),
+    ];
+    const board = normalizeBoard({ project: PROJECT, fields, items }, { url: BOARD_URL });
+    // No In review column: this board doesn't have one.
+    assert.deepEqual(board.columns.map((c) => c.label), ['To do', 'In progress', 'Done', 'Ground 0', 'Parking lot']);
+    assert.equal(board.cards.length, 3);
+    const ground = board.cards.find((c) => c.title === 'Anvay - Ground 0');
+    assert.equal(ground.column, 'status:Ground 0');
+    assert.equal(ground.stage, null);
+});
+
+test('only filter options that have cards become buttons', () => {
+    const squads = { id: 4, name: 'Team', data_type: 'single_select', options: ['Squad 1', 'Squad 2', 'Squad 3'].map(option) };
+    const fields = [...MINIMAL_FIELDS, squads];
+    const unassigned = [item(401, 'DraftIssue', draft('Sprint 1 review'), [statusValue('Done')], '2026-10-14T00:00:00Z')];
+    assert.deepEqual(normalizeBoard({ project: PROJECT, fields, items: unassigned }, { filterName: 'Team', url: BOARD_URL }).groups, []);
+
+    const one = [...unassigned, item(402, 'DraftIssue', draft('Showcase'), [statusValue('Todo'), { id: 4, name: 'Team', data_type: 'single_select', value: option('Squad 2') }], '2026-10-14T00:00:00Z')];
+    assert.deepEqual(normalizeBoard({ project: PROJECT, fields, items: one }, { filterName: 'Team', url: BOARD_URL }).groups, ['Squad 2']);
+});
+
+test('without a filter there are no groups to choose from', () => {
+    const board = normalizeBoard({ project: PROJECT, fields: FIELDS, items: ITEMS }, { url: BOARD_URL });
+    assert.deepEqual(board.groups, []);
+    assert.deepEqual(board.shared, []);
+    assert.equal(board.cards[0].group, '');
+});
+
+/* ── Columns ─────────────────────────────────────────────────────────── */
+
+test('a team filter shows that team\'s cards plus the cards the whole team shares', () => {
+    const board = normalizeBoard({ project: PROJECT, fields: FIELDS, items: ITEMS }, { filterName: 'Team', url: BOARD_URL });
+    assert.deepEqual(filterCards(board, 'SASS').map((c) => c.title), ['Lesson sidebar on ocs__tree', 'Sprint 3 team plan issue']);
+    assert.deepEqual(filterCards(board, 'DMs').map((c) => c.title), ['Sprint 3 team plan issue']);
+    assert.equal(filterCards(board, 'all').length, 4);
+});
+
+test('the done column lists the most recently shipped work first; other columns keep the board\'s order', () => {
+    const cards = [
+        { title: 'Old', column: 'done', stage: 'done', shipped: '2026-09-30' },
+        { title: 'Undated', column: 'done', stage: 'done', shipped: null },
+        { title: 'Next', column: 'todo', stage: 'todo', shipped: null },
+        { title: 'New', column: 'done', stage: 'done', shipped: '2026-10-12' },
+        { title: 'Later', column: 'todo', stage: 'todo', shipped: null },
+    ];
+    assert.deepEqual(columnCards(cards, { key: 'done', stage: 'done' }).map((c) => c.title), ['New', 'Old', 'Undated']);
+    assert.deepEqual(columnCards(cards, { key: 'todo', stage: 'todo' }).map((c) => c.title), ['Next', 'Later']);
+});
+
+/* ── Fetching ────────────────────────────────────────────────────────── */
+
+const json = (body, init = {}) => new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' }, ...init });
+const NEXT = 'https://api.github.com/organizations/321096333/projectsV2/1/items?per_page=100&fields=3%2C4%2C5%2C6&after=abc';
+
+// Answers like GitHub for the one board above. Every URL it was asked for is
+// kept, and anything it doesn't know is a 404, so a wrong URL fails the test.
+function fakeGitHub() {
+    const seen = [];
+    const fetchImpl = async (url, init) => {
+        seen.push(url);
+        assert.equal(init.headers.Accept, 'application/vnd.github+json');
+        const { pathname, searchParams } = new URL(url);
+        if (url === `${API}`) return json(PROJECT);
+        if (url === `${API}/fields`) return json(FIELDS);
+        if (pathname.endsWith('/projectsV2/1/items')) {
+            assert.equal(searchParams.get('per_page'), '100');
+            assert.deepEqual(searchParams.get('fields').split(',').sort(), ['3', '4', '5', '6']);
+            if (searchParams.get('after') === 'abc') return json(ITEMS.slice(3));
+            return json(ITEMS.slice(0, 3), { headers: { link: `<${NEXT}>; rel="next"` } });
+        }
+        return json({ message: 'Not Found' }, { status: 404 });
+    };
+    return { seen, fetchImpl };
+}
+
+test('a refresh reads the project, its fields and every page of items', async () => {
+    const { seen, fetchImpl } = fakeGitHub();
+    const now = Date.UTC(2026, 9, 20, 23, 0);
+    const entry = await refreshBoard(parseBoardUrl(BOARD_URL), { filterName: 'Team', fetchImpl, now });
+    assert.equal(seen.length, 4);
+    assert.equal(seen[3], NEXT);
+    assert.equal(entry.board.cards.length, 4);
+    assert.equal(entry.board.title, 'UGRC-CSA — Team Kanban');
+    assert.equal(entry.fetchedAt, now);
+    assert.equal(entry.metaAt, now);
+});
+
+test('a refresh within a day reuses the project and fields and reads only the items', async () => {
+    const { seen, fetchImpl } = fakeGitHub();
+    const now = Date.UTC(2026, 9, 20, 23, 0);
+    const first = await refreshBoard(parseBoardUrl(BOARD_URL), { filterName: 'Team', fetchImpl, now });
+    seen.length = 0;
+    const later = now + 30 * MINUTE;
+    const second = await refreshBoard(parseBoardUrl(BOARD_URL), { filterName: 'Team', meta: first.meta, metaAt: first.metaAt, fetchImpl, now: later });
+    assert.equal(seen.length, 2);
+    assert.ok(seen.every((url) => url.includes('/items')));
+    assert.equal(second.metaAt, now);
+    assert.equal(second.fetchedAt, later);
+    assert.equal(second.board.title, 'UGRC-CSA — Team Kanban');
+});
+
+test('item pages stop after five', async () => {
+    let itemCalls = 0;
+    const fetchImpl = async (url) => {
+        if (url === `${API}`) return json(PROJECT);
+        if (url === `${API}/fields`) return json(FIELDS);
+        itemCalls += 1;
+        const page = [item(200 + itemCalls, 'DraftIssue', draft(`Card ${itemCalls}`), [statusValue('📋 To Do')], '2026-10-14T00:00:00Z')];
+        return json(page, { headers: { link: `<${API}/items?per_page=100&fields=3&after=p${itemCalls}>; rel="next"` } });
+    };
+    const entry = await refreshBoard(parseBoardUrl(BOARD_URL), { fetchImpl, now: 0 });
+    assert.equal(itemCalls, 5);
+    assert.equal(entry.board.cards.length, 5);
+});
+
+test('GitHub errors are told apart: private or missing, rate limited, no answer', async () => {
+    const ref = parseBoardUrl(BOARD_URL);
+    const missing = async () => json({ message: 'Not Found' }, { status: 404 });
+    await assert.rejects(refreshBoard(ref, { fetchImpl: missing, now: 0 }), (err) => err instanceof BoardError && err.kind === 'missing');
+
+    const limited = async () => json({ message: 'API rate limit exceeded' }, {
+        status: 403, headers: { 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': '1800000000' },
+    });
+    await assert.rejects(refreshBoard(ref, { fetchImpl: limited, now: 0 }),
+        (err) => err instanceof BoardError && err.kind === 'limit' && err.resetAt === 1800000000000);
+
+    const offline = async () => { throw new TypeError('Failed to fetch'); };
+    await assert.rejects(refreshBoard(ref, { fetchImpl: offline, now: 0 }), (err) => err instanceof BoardError && err.kind === 'network');
+
+    const signInOnly = async () => json({ message: 'Requires authentication' }, { status: 401 });
+    await assert.rejects(refreshBoard(ref, { fetchImpl: signInOnly, now: 0 }), (err) => err instanceof BoardError && err.kind === 'auth');
+});
+
+/* ── Saved copies ────────────────────────────────────────────────────── */
+
+test('a saved board is fresh for ten minutes, then stale, and blocked until a rate limit resets', () => {
+    const now = Date.UTC(2026, 9, 20, 23, 0);
+    const board = { cards: [] };
+    assert.equal(cacheState(null, now), 'empty');
+    assert.equal(cacheState({ board, fetchedAt: now - MINUTE }, now), 'fresh');
+    assert.equal(cacheState({ board, fetchedAt: now - 11 * MINUTE }, now), 'stale');
+    assert.equal(cacheState({ board, fetchedAt: now - 11 * MINUTE, retryAt: now + MINUTE }, now), 'blocked');
+    assert.equal(cacheState({ board: null, retryAt: now + MINUTE }, now), 'blocked');
+    assert.equal(cacheState({ board: null, retryAt: now - MINUTE }, now), 'empty');
+});
+
+test('saved copies survive a round trip, and blocked or broken storage reads as nothing', () => {
+    const values = new Map();
+    const storage = { getItem: (key) => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) };
+    writeEntry('ocs-kanban:v1:test', { fetchedAt: 5, board: { title: 'B' } }, storage);
+    assert.deepEqual(readEntry('ocs-kanban:v1:test', storage), { fetchedAt: 5, board: { title: 'B' } });
+
+    values.set('broken', '{not json');
+    assert.equal(readEntry('broken', storage), null);
+
+    const blocked = { getItem() { throw new Error('SecurityError'); }, setItem() { throw new Error('QuotaExceededError'); } };
+    assert.equal(readEntry('ocs-kanban:v1:test', blocked), null);
+    assert.doesNotThrow(() => writeEntry('ocs-kanban:v1:test', { fetchedAt: 5 }, blocked));
+});

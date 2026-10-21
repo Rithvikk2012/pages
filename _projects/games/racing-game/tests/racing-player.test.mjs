@@ -1,62 +1,66 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import Player from '../levels/RacingPlayer.js';
+import {
+  createKeyboardPlayer,
+  pressKey,
+  releaseKey,
+} from '@assets/js/GameEnginev1.1/test/keyboard-test-helper.mjs';
 
-// Isolate the racing keyboard policy from engine rendering and browser setup.
-const engineStub = `export default class EnginePlayer {
-  constructor(data, gameEnv) { this.keypress = data.keypress; this.gameEnv = gameEnv; this.received = []; }
-  handleKeyDown(event) { this.received.push(event.keyCode); }
-}`;
-const stubUrl = `data:text/javascript;base64,${Buffer.from(engineStub).toString('base64')}`;
-const source = (await readFile(new URL('../levels/RacingPlayer.js', import.meta.url), 'utf8'))
-  .replace('@assets/js/GameEnginev1.1/essentials/Player.js', stubUrl);
-const { default: Player } = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
 const arrows = { up: 38, left: 37, down: 40, right: 39 };
 const wasd = { up: 87, left: 65, down: 83, right: 68 };
 
 function fixture(keypress = arrows) {
-  const env = { gameControl: { isPaused: false }, container: { isConnected: true } };
-  return new Player({ keypress }, env);
+  return createKeyboardPlayer(Player, { keypress });
 }
 
-function press(player, keyCode, options = {}) {
-  let prevented = false;
-  player.handleKeyDown({ keyCode, preventDefault() { prevented = true; }, ...options });
-  return prevented;
-}
-
-test('all mapped arrows prevent page scrolling and still reach the movement handler', () => {
+test('racing inherits arrow scroll prevention and real engine movement', () => {
   const player = fixture();
-  for (const code of Object.values(arrows)) assert.equal(press(player, code), true);
-  assert.deepEqual(player.received, Object.values(arrows));
+  assert.equal(pressKey(player, 38).defaultPrevented, true);
+  assert.equal(player.velocity.y, -5);
+  assert.equal(player.direction, 'up');
+  releaseKey(player, 38);
+  assert.deepEqual(player.velocity, { x: 0, y: 0 });
   assert.equal(player.constructor.name, 'Player', 'HUD can still find the car');
 });
 
 test('WASD and unmapped arrows keep their browser defaults', () => {
   const player = fixture(wasd);
-  assert.equal(press(player, 38), false);
-  assert.equal(press(player, 87), false);
-  assert.deepEqual(player.received, [38, 87]);
+  assert.equal(pressKey(player, 38).defaultPrevented, false);
+  assert.deepEqual(player.velocity, { x: 0, y: 0 });
+  assert.equal(pressKey(player, 87).defaultPrevented, false);
+  assert.equal(player.velocity.y, -5);
 });
 
 test('typing fields and browser shortcuts do not move cars or block default behavior', () => {
   const player = fixture();
   for (const tagName of ['INPUT', 'TEXTAREA', 'SELECT']) {
-    assert.equal(press(player, 38, { target: { tagName } }), false);
+    assert.equal(pressKey(player, 38, { target: { tagName } }).defaultPrevented, false);
   }
-  assert.equal(press(player, 38, { target: { isContentEditable: true } }), false);
+  assert.equal(pressKey(player, 38, { target: { isContentEditable: true } }).defaultPrevented, false);
   for (const modifier of ['altKey', 'ctrlKey', 'metaKey']) {
-    assert.equal(press(player, 37, { [modifier]: true }), false);
+    assert.equal(pressKey(player, 37, { [modifier]: true }).defaultPrevented, false);
   }
-  assert.deepEqual(player.received, []);
+  assert.deepEqual(player.pressedKeys, {});
+  assert.deepEqual(player.velocity, { x: 0, y: 0 });
 });
 
 test('paused and detached games do not capture keys', () => {
   const player = fixture();
   player.gameEnv.gameControl.isPaused = true;
-  assert.equal(press(player, 40), false);
+  assert.equal(pressKey(player, 40).defaultPrevented, false);
   player.gameEnv.gameControl.isPaused = false;
   player.gameEnv.container.isConnected = false;
-  assert.equal(press(player, 40), false);
-  assert.deepEqual(player.received, []);
+  assert.equal(pressKey(player, 40).defaultPrevented, false);
+  assert.deepEqual(player.pressedKeys, {});
+  assert.deepEqual(player.velocity, { x: 0, y: 0 });
+});
+
+test('a key released while paused does not leave the car moving', () => {
+  const player = fixture();
+  pressKey(player, 40);
+  player.gameEnv.gameControl.isPaused = true;
+  releaseKey(player, 40);
+  assert.deepEqual(player.pressedKeys, {});
+  assert.deepEqual(player.velocity, { x: 0, y: 0 });
 });

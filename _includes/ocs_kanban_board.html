@@ -1,0 +1,39 @@
+{% comment %}
+  Kanban board: a team's GitHub project board, live, on any page.
+
+  {% raw %}{% include ocs_kanban_board.html url="https://github.com/orgs/UGRC-CSA/projects/1" filter="Team" %}{% endraw %}
+
+  Options:
+    url      the board's address on GitHub (required). It has to be a public
+             board owned by an organization (github.com/orgs/...): the page
+             reads it without signing in, and GitHub keeps a personal board's
+             cards for signed-in users.
+    filter   a single-select field to filter cards by, e.g. Team    default: no filter
+             (each option that has cards becomes a button)
+    title    the heading                                            default: the board's name
+
+  The board loads itself (assets/js/kanban-board.js) when it scrolls near the
+  screen, and keeps a copy for 10 minutes. The frame, filters and toggle are
+  existing OCS elements (ocs__card, ocs__links, ocs__btn, ocs__toggle,
+  ocs__status-pill, ocs__text); the columns and cards are the ocs__kanban
+  element (_sass/open-coding/elements/kanban/), whose names also hold up
+  inside a capstone's *-infograph include. The parts the script shows and
+  hides are plain wrappers, because ocs__ elements that set display beat
+  [hidden].
+{% endcomment %}
+{% assign ocs_kanban_title = include.title | default: "Project board" %}
+<section class="ocs__card ocs__keypoints" data-ocs-kanban data-board-url="{{ include.url | escape }}" data-filter="{{ include.filter | escape }}"{% if include.title %} data-title-fixed{% endif %} aria-label="{{ ocs_kanban_title | escape }}">
+  <div class="ocs__links">
+    <strong data-hook="title">{{ ocs_kanban_title | escape }}</strong>
+    <span class="ocs__text" data-hook="meta"></span>
+    <a class="ocs__btn small pill" href="{{ include.url | escape }}" target="_blank" rel="noopener">Open on GitHub</a>
+  </div>
+  <div class="ocs__text" data-hook="status" role="status" hidden></div>
+  <div data-hook="mount" hidden></div>
+  <noscript><div class="ocs__text">Turn on JavaScript to see the board here, or open it on GitHub.</div></noscript>
+</section>
+
+{% unless ocs_kanban_board_assets %}
+{% assign ocs_kanban_board_assets = true %}
+<script type="module" src="{{ site.baseurl }}/assets/js/kanban-board.js"></script>
+{% endunless %}

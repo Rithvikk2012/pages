@@ -19,6 +19,7 @@ class GameLevelTutorial {
         SCALE_FACTOR: 10,
         STEP_FACTOR: 1100,
         INIT_POSITION: { x: 700 / 1408, y: 440 / 600},
+        direction: { default: 'right', index: 1 }, // facing right initially
         pixels: { height: 1024, width: 1536 },
         orientation: { rows: 4, columns: 4 },
         up:        { row: 3, start: 0, columns: 1 },
@@ -39,6 +40,7 @@ class GameLevelTutorial {
         SCALE_FACTOR: 10,
         STEP_FACTOR: 1100,
         INIT_POSITION: {x: 340 / 740, y: 500 / 585},
+        direction: { default: 'right', index: 1 }, // facing right initially
         pixels: { height: 1024, width: 1536 },
         orientation: { rows: 4, columns: 4 },
         up:        { row: 3, start: 0, columns: 1 },
