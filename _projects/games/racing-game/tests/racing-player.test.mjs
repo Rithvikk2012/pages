@@ -64,3 +64,46 @@ test('a key released while paused does not leave the car moving', () => {
   assert.deepEqual(player.pressedKeys, {});
   assert.deepEqual(player.velocity, { x: 0, y: 0 });
 });
+
+function setBackgroundPixelColor(player, [red, green, blue]) {
+  player.gameEnv.ctx = {
+    getImageData(_x, _y, width, height) {
+      const data = new Uint8ClampedArray(width * height * 4);
+      for (let offset = 0; offset < data.length; offset += 4) {
+        data.set([red, green, blue, 255], offset);
+      }
+      return { data };
+    },
+  };
+  player.data = { mudSlowdown: true };
+  player.width = 50;
+  player.height = 50;
+  player.gameEnv.innerWidth = 1000;
+  player.gameEnv.innerHeight = 600;
+}
+
+test('mud slows tutorial cars to half speed and restores normal speed off the mud', () => {
+  const player = fixture();
+  setBackgroundPixelColor(player, [100, 60, 35]);
+  player.position = { x: 100, y: 100 };
+  pressKey(player, 39);
+
+  player.move();
+  assert.equal(player.position.x, 102.5);
+  assert.equal(player.velocity.x, 5);
+  setBackgroundPixelColor(player, [70, 75, 80]);
+  setBackgroundPixelColor(player, [70, 75, 80]);
+  player.move();
+  assert.equal(player.position.x, 107.5);
+});
+
+test('cars without the tutorial mud setting keep their normal speed', () => {
+  const player = fixture();
+  setBackgroundPixelColor(player, [100, 60, 35]);
+  player.position = { x: 100, y: 100 };
+  player.data.mudSlowdown = false;
+  pressKey(player, 39);
+
+  player.move();
+  assert.equal(player.position.x, 105);
+});
