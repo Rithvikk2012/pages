@@ -2,23 +2,54 @@ import GameObject from '@assets/js/GameEnginev1.1/essentials/GameObject.js';
 import GameEnvBackground from '@assets/js/GameEnginev1.1/essentials/GameEnvBackground.js';
 import Player from '@assets/js/GameEnginev1.1/essentials/Player.js';
 import SplineBarrier from '@assets/js/GameEnginev1.1/essentials/SplineBarrier.js';
+import LapTracker from './LapTracker.js';
 
 class TimeLapScreen extends GameObject {
   constructor(data = {}, gameEnv = null) {
     super(gameEnv);
     this.data = data;
     this.totalLaps = Number.isFinite(data.totalLaps) ? data.totalLaps : 3;
-    this.currentLap = Number.isFinite(data.currentLap) ? data.currentLap : 1;
+    this.currentLap = 1;
     this.startedAt = null;
+    this.finishedAt = null;
+    this.lapTracker = new LapTracker({
+      finishLine: { x: 0.5, top: 0.7, bottom: 0.85 },
+      checkpoint: { x: 0.5, top: 0.22, bottom: 0.34 },
+      totalLaps: this.totalLaps,
+    });
     this.player = gameEnv?.gameObjects?.find((object) => object instanceof NightCityPlayer);
     this.panel = { x: 18, y: 18, width: 240, height: 138 };
   }
 
   update() {
-    if (this.player?.selected && this.startedAt === null) {
-      this.startedAt = performance.now();
+    if (this.player?.selected) {
+      const now = performance.now();
+      if (this.startedAt === null) {
+        this.startedAt = now;
+      }
+      this.updateLapProgress(now);
     }
     this.draw();
+  }
+
+  updateLapProgress(now) {
+    if (this.finishedAt !== null || !this.player) {
+      return;
+    }
+
+    const center = this.player.getCenter();
+    const position = {
+      x: center.x / this.gameEnv.innerWidth,
+      y: center.y / this.gameEnv.innerHeight
+    };
+    const justFinished = this.lapTracker.update(this.player, position);
+    this.currentLap = Math.min(
+      this.lapTracker.getLapsCompleted(this.player) + 1,
+      this.totalLaps
+    );
+    if (justFinished) {
+      this.finishedAt = now;
+    }
   }
 
   draw() {
@@ -27,9 +58,11 @@ class TimeLapScreen extends GameObject {
       return;
     }
 
-    const elapsedMs = this.startedAt === null ? 0 : performance.now() - this.startedAt;
+    const elapsedMs = this.startedAt === null
+      ? 0
+      : (this.finishedAt ?? performance.now()) - this.startedAt;
     const timeLabel = this.formatTime(elapsedMs);
-    const lapLabel = 'Lap ' + this.currentLap + '/' + this.totalLaps;
+    const lapLabel = this.finishedAt === null ? 'Lap ' + this.currentLap + '/' + this.totalLaps : 'FINISH!';
     const { x, y, width, height } = this.panel;
 
     ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
@@ -221,8 +254,8 @@ class NightCityPlayer extends Player {
     this.motionVelocity.x = forwardX * forwardSpeed + rightX * lateralSpeed;
     this.motionVelocity.y = forwardY * forwardSpeed + rightY * lateralSpeed;
     this.direction = this.getSpriteDirection();
-    this.velocity.x = this.motionVelocity.x * elapsedSeconds * 60;
-    this.velocity.y = this.motionVelocity.y * elapsedSeconds * 60;
+    this.velocity.x = this.motionVelocity.x * elapsedSeconds;
+    this.velocity.y = this.motionVelocity.y * elapsedSeconds;
   }
 
   getSpriteDirection() {
@@ -343,7 +376,6 @@ class GameLevelNightcity {
         keypress: { up: 87, left: 65, down: 83, right: 68 } // W, A, S, D
     };
     const timer_data = {
-      currentLap: 1,
       totalLaps: 3
     };
     const trackBarrierData = [

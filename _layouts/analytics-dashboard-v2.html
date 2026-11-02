@@ -242,12 +242,25 @@ score += gists * 0.5
                                 <span class="ocs__analytics-fineprint">Value: <span id="val-organization">4</span></span>
                             </div>
                         </form>
+                        <label for="forecastGuess" class="ocs__label">
+                            Before you predict, what grade do you expect? (optional, %)
+                        </label>
+                        <input type="number" id="forecastGuess" min="0" max="100" step="1" placeholder="e.g. 88"
+                            class="ocs__input ocs__analytics-card-spaced-sm" style="max-width: 8rem;" />
                         <button id="smartPredictBtn" class="ocs__btn accent fill medium">
                             Smart Predict Grade
                         </button>
                         <p id="userGrade" class="ocs__analytics-result-text ocs__analytics-card-spaced-sm"></p>
+                        <p id="forecastSaved" class="ocs__analytics-fineprint" hidden>
+                            Forecast saved. See how your guesses compare over time in your
+                            <a href="{{ site.baseurl }}/retrospective#forecast">Retrospective</a>.
+                        </p>
                     </div>
                 </div>
+
+                <!-- Grade Calculator, rendered by assets/js/analytics/grade-calculator.js -->
+                <div id="grade-calculator-root" style="margin-top: 2rem;"></div>
+
 
                 <!-- Help content -->
                 <div class="ocs__analytics-card-spaced">
@@ -382,21 +395,37 @@ score += gists * 0.5
                 <script type="module">
     import { pythonURI, javaURI, fetchOptions } from '{{ site.baseurl }}/assets/js/api/config.js';
     import { initOCSAnalyticsDashboard } from '{{ site.baseurl }}/assets/js/ocs-analytics-dashboard.js';
+    import { recordForecast } from '{{ site.baseurl }}/assets/js/analytics/forecast-retrospective.js';
+    import { initGradeCalculator } from '{{ site.baseurl }}/assets/js/analytics/grade-calculator.js';
 
-    // ===== Commits Over Time: calendar-week sprint periods =====
-    // The weekly calendar announcements define Week 1 as Aug 17–21,
-    // with Sprint 1 beginning that week. Four calendar weeks make a sprint.
-    const CALENDAR_WEEK_START = new Date("2026-08-17T00:00:00");
-    const WEEKS_PER_SPRINT = 4;
+    // Under the predictor: the student's own Grade Calculator (scores copied from their gradebook, plus
+    // what-ifs). Each Smart Predict is logged for the Forecast Retrospective on the Retrospective page.
+    let gradeCalculatorStarted = false;
+
+    async function showGradeCalculator() {
+        if (gradeCalculatorStarted) return;
+        gradeCalculatorStarted = true;
+        await initGradeCalculator(document.getElementById("grade-calculator-root"));
+    }
+
+    async function logForecast(sliderValues, modelGrade) {
+        const guessInput = document.getElementById("forecastGuess");
+        const guess = guessInput && guessInput.value !== "" ? Number(guessInput.value) : null;
+        const saved = await recordForecast(sliderValues, Math.min(100, Math.max(0, modelGrade)), guess);
+        if (saved) {
+            if (guessInput) guessInput.value = "";
+            document.getElementById("forecastSaved").hidden = false;
+        }
+    }
+
+    // ===== Commits Over Time: sprint periods from the school calendar =====
+    // Sprints and breaks come from _data/school_calendar.yml, so new sprint
+    // tabs appear as the dates pass without editing this page.
+    const SCHOOL_CALENDAR = {{ site.data.school_calendar | jsonify }};
     const DAY_MS = 86400000;
 
     const localDateKey = (date) =>
         `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-
-    const dateFromKey = (key) => {
-        const [year, month, day] = key.split("-").map(Number);
-        return new Date(year, month - 1, day);
-    };
 
     const formatDate = (date) =>
         date.toLocaleDateString(undefined, {
@@ -404,49 +433,50 @@ score += gists * 0.5
             day: "numeric"
         });
 
-    const addDays = (date, days) => {
-        const result = new Date(date);
-        result.setDate(result.getDate() + days);
-        return result;
+    // Sprints come from the "Sprint N ..." notes in _data/school_calendar.yml.
+    // A sprint runs until the day before the next one starts (breaks included),
+    // and only sprints that have started get a tab; the current one ends today.
+    const dateFromKey = (key) => {
+        const [year, month, day] = String(key).split("-").map(Number);
+        return new Date(year, month - 1, day);
     };
 
-    // Build the calendar weeks from the weekly announcement schedule.
-    // Week 1 = Aug 17–21, Week 8 = Oct 5–9.
-    function buildCalendarWeeks() {
-        const weeks = [];
+    function buildCommitPeriods(calendar, today) {
+        const now = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const weeks = Object.values(calendar.weeks || {})
+            .filter((week) => week && week.monday)
+            .sort((a, b) => String(a.monday).localeCompare(String(b.monday)));
+        const yearEnd = dateFromKey(calendar.last_day);
 
-        for (let i = 0; i < 8; i++) {
-            const start = addDays(CALENDAR_WEEK_START, i * 7);
-            const end = addDays(start, 4);
+        const starts = [];
+        weeks.forEach((week) => {
+            const match = /Sprint\s+(\d+)/i.exec(week.notes || "");
+            if (match && !starts.some((s) => s.number === Number(match[1]))) {
+                starts.push({ number: Number(match[1]), start: dateFromKey(week.monday) });
+            }
+        });
 
-            weeks.push({
-                number: i + 1,
-                start,
-                end
-            });
-        }
+        const sprints = starts
+            .map(({ number, start }, index) => {
+                const next = starts[index + 1];
+                const scheduledEnd = next
+                    ? new Date(next.start.getFullYear(), next.start.getMonth(), next.start.getDate() - 1)
+                    : yearEnd;
+                const current = start <= now && now <= scheduledEnd;
+                return {
+                    id: `sprint-${number}`,
+                    label: `Sprint ${number}`,
+                    start,
+                    end: current ? now : scheduledEnd,
+                    current
+                };
+            })
+            .filter((sprint) => sprint.start <= now);
 
-        return weeks;
-    }
-
-    function buildSprintPeriods() {
-        const weeks = buildCalendarWeeks();
-        const periods = [];
-
-        for (let i = 0; i < weeks.length; i += WEEKS_PER_SPRINT) {
-            const sprintWeeks = weeks.slice(i, i + WEEKS_PER_SPRINT);
-            if (!sprintWeeks.length) continue;
-
-            periods.push({
-                id: `sprint-${periods.length + 1}`,
-                label: `Sprint ${periods.length + 1}`,
-                start: sprintWeeks[0].start,
-                end: sprintWeeks[sprintWeeks.length - 1].end,
-                weeks: sprintWeeks
-            });
-        }
-
-        return periods;
+        return [
+            { id: "all", label: "All Time", start: dateFromKey(weeks[0].monday), end: now < yearEnd ? now : yearEnd, current: false },
+            ...sprints
+        ];
     }
 
     async function renderCommitsOverTimeChart(commitsArray) {
@@ -474,16 +504,7 @@ score += gists * 0.5
             .sort()
             .map(dateFromKey);
 
-        const sprintPeriods = buildSprintPeriods();
-        const periods = [
-            {
-                id: "all",
-                label: "All Time",
-                start: dateFromKey("2026-08-10"),
-                end: sprintPeriods[sprintPeriods.length - 1].end
-            },
-            ...sprintPeriods
-        ];
+        const periods = buildCommitPeriods(SCHOOL_CALENDAR, new Date());
 
         const countCommits = (start, end) => {
             return commitDates.reduce((total, date) => {
@@ -515,7 +536,10 @@ score += gists * 0.5
                 if (period.id === "all") {
                     labelEl.textContent = `All Time · ${formatDate(period.start)} – ${formatDate(period.end)} · ${totalCommits} commits`;
                 } else {
-                    labelEl.textContent = `${period.label} · ${formatDate(period.start)} – ${formatDate(period.end)} · ${totalCommits} commits`;
+                    const range = period.current
+                        ? `${formatDate(period.start)} – today`
+                        : `${formatDate(period.start)} – ${formatDate(period.end)}`;
+                    labelEl.textContent = `${period.label} · ${range} · ${totalCommits} commits`;
                 }
             }
 
@@ -644,11 +668,10 @@ score += gists * 0.5
         select(
             periods.some((period) => period.id === window.selectedCommitPeriod)
                 ? window.selectedCommitPeriod
-                : "all"
+                : (periods.find((period) => period.current)?.id || "all")
         );
     }
 
-    const profileLinksUrl = `${pythonURI}/api/analytics/github/user/profile_links`;
     const userProfileUrl = `${pythonURI}/api/analytics/github/user`;
     const commitsUrl = `${pythonURI}/api/analytics/github/user/commits`;
     const prsUrl = `${pythonURI}/api/analytics/github/user/prs`;
@@ -791,6 +814,9 @@ score += gists * 0.5
             });
             const data = await predict.json();
             userGradeEl.textContent = `Saved & Smart Grade: ${data.predicted_final_grade || 'N/A'}`;
+            if (typeof data.predicted_final_grade === 'number') {
+                await logForecast(body, data.predicted_final_grade);
+            }
         } catch (error) {
             console.error("Error fetching prediction:", error);
             userGradeEl.textContent = "Saved, but error predicting grade.";
@@ -811,38 +837,41 @@ score += gists * 0.5
         });
     });
 
+    // Each GitHub request fills its own cards. One that fails marks only those cards
+    // "Unavailable", instead of leaving the whole page on "Loading..." behind an alert.
+    async function getJson(url) {
+        const res = await fetch(url, fetchOptions);
+        if (!res.ok) throw new Error(`${url} returned ${res.status}`);
+        return res.json();
+    }
+
+    function markUnavailable(ids) {
+        ids.forEach((id) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = "Unavailable";
+        });
+    }
+
+    // Each card fills in as soon as its own request returns, so the slow commits read doesn't hold up the rest.
     async function fetchData() {
-        try {
-            const [profileLinksRes, userProfileRes, commitsRes, prsRes, issuesRes] = await Promise.all([
-                fetch(profileLinksUrl, fetchOptions),
-                fetch(userProfileUrl, fetchOptions),
-                fetch(commitsUrl, fetchOptions),
-                fetch(prsUrl, fetchOptions),
-                fetch(issuesUrl, fetchOptions),
-            ]);
+        const load = (url) => getJson(url).catch((e) => {
+            console.error("Error fetching GitHub data:", e);
+            return null;
+        });
+        await Promise.all([
+            load(userProfileUrl).then(renderProfile),
+            load(issuesUrl).then(renderIssues),
+            load(prsUrl).then(renderPrs),
+            load(commitsUrl).then(renderCommits),
+        ]);
+    }
 
-            if (![profileLinksRes, userProfileRes, commitsRes, prsRes, issuesRes].every((res) => res.ok)) {
-                throw new Error("One or more fetch requests failed.");
-            }
-
-            const profileLinks = await profileLinksRes.json();
-            const userProfile = await userProfileRes.json();
-            const commitsData = await commitsRes.json();
-            const prsData = await prsRes.json();
-            const issuesData = await issuesRes.json();
-
-            const commitsArray = commitsData.details_of_commits || [];
-            const commitsCount = commitsData.total_commit_contributions || 0;
-            const totalAdditions = commitsData.total_lines_added || 0;
-            const totalDeletions = commitsData.total_lines_deleted || 0;
-
-            const prsArray = prsData.pull_requests || [];
-            const issuesArray = issuesData.issues || [];
-
+    function renderProfile(userProfile) {
+        if (userProfile) {
             const username = userProfile.login || "N/A";
             const avatarUrl = userProfile.avatar_url || "";
-            const profileUrl = profileLinks.profile_url || "#";
-            const reposUrl = profileLinks.repos_url || "#";
+            const profileUrl = userProfile.html_url || "#";
+            const reposUrl = userProfile.repos_url || "#";
 
             // Fill in profile info
             document.getElementById("avatar").src = avatarUrl;
@@ -853,12 +882,42 @@ score += gists * 0.5
             document.getElementById("public-gists").textContent = `Public Gists: ${userProfile.public_gists || 0}`;
             document.getElementById("followers").textContent = `Followers: ${userProfile.followers || 0}`;
             document.getElementById("following").textContent = `Following: ${userProfile.following || 0}`;
+        } else {
+            markUnavailable(["username", "profile-url", "repos-url", "public-repos", "public-gists", "followers", "following"]);
+        }
+    }
+
+    function renderIssues(issuesData) {
+        if (issuesData) {
+            document.getElementById("issues-count").textContent = (issuesData.issues || []).length;
+            setupInfoModal("issues-info", issuesData);
+        } else {
+            markUnavailable(["issues-count"]);
+        }
+    }
+
+    function renderPrs(prsData) {
+        if (prsData) {
+            document.getElementById("prs-count").textContent = (prsData.pull_requests || []).length;
+            setupInfoModal("prs-info", prsData);
+        } else {
+            markUnavailable(["prs-count"]);
+        }
+    }
+
+    async function renderCommits(commitsData) {
+        if (!commitsData) {
+            markUnavailable(["commits-count", "lines-changed"]);
+            return;
+        }
+        try {
+            const commitsArray = commitsData.details_of_commits || [];
+            const commitsCount = commitsData.total_commit_contributions || 0;
+            const totalAdditions = commitsData.total_lines_added || 0;
+            const totalDeletions = commitsData.total_lines_deleted || 0;
 
             document.getElementById("lines-changed").textContent = `+${totalAdditions} / -${totalDeletions}`;
-
             document.getElementById("commits-count").textContent = commitsCount;
-            document.getElementById("issues-count").textContent = issuesArray.length;
-            document.getElementById("prs-count").textContent = prsArray.length;
 
             // Commits over time chart (sprints computed from calendar breaks)
             await renderCommitsOverTimeChart(commitsArray);
@@ -873,12 +932,10 @@ score += gists * 0.5
                 card.className = "flex flex-col border shadow-2xs rounded-xl bg-neutral-800 border-neutral-700 p-4";
 
                 card.innerHTML = `
-                    <h4 class="text-sm font-medium mb-1">${commit.repository || "Unknown Repo"}</h4>
+                    <h4 class="text-sm font-medium mb-1"></h4>
                     <p class="text-xs mb-1">
                         <strong>Message:</strong>
-                        <a href="${commit.url}" target="_blank" class="text-blue-400 hover:underline">
-                            ${commit.message || "No message"}
-                        </a>
+                        <a target="_blank" class="text-blue-400 hover:underline"></a>
                     </p>
                     <p class="text-xs mb-1"><strong>Date:</strong> ${new Date(commit.date).toLocaleString() || "Unknown"}</p>
                     <p class="text-xs mb-1">
@@ -887,6 +944,11 @@ score += gists * 0.5
                         <span class="text-red-400">-${commit.deletions || 0}</span>
                     </p>
                 `;
+                // Commit text is shown as text, so a message like "Use <details>" isn't parsed as HTML.
+                card.querySelector("h4").textContent = commit.repository || "Unknown Repo";
+                const link = card.querySelector("a");
+                link.href = commit.url || "#";
+                link.textContent = commit.message || "No message";
                 commitCardsContainer.appendChild(card);
             });
 
@@ -900,14 +962,11 @@ score += gists * 0.5
                 };
             }
 
-            // Info links to show modal details
+            // Info link to show modal details
             setupInfoModal("commits-info", commitsData);
-            setupInfoModal("issues-info", issuesData);
-            setupInfoModal("prs-info", prsData);
 
         } catch (error) {
-            console.error("Error fetching GitHub data:", error);
-            alert("Error loading GitHub analytics data. Please check console for details.");
+            console.error("Error showing GitHub commits:", error);
         }
     }
 
@@ -1146,6 +1205,9 @@ score += gists * 0.5
                     await window.OCSAnalytics.loadAnalyticsSummary();
                 }
             }
+            if (targetId === "tab-content-grade") {
+                await showGradeCalculator();
+            }
             if (targetId === "tab-content-skill-passport") {
                 await loadSkillPassport();
 }
@@ -1157,13 +1219,13 @@ score += gists * 0.5
         const activeTab = document.querySelector(".tab-btn.active");
         if (activeTab) setUnderline(activeTab);
 
-        await fetchData();
-        await loadStudentEvaluation();
-        
-        // Load OCS Analytics if it's the active tab
-        if (window.OCSAnalytics && window.OCSAnalytics.loadAnalyticsSummary) {
-            await window.OCSAnalytics.loadAnalyticsSummary();
+        // The sections don't depend on each other, so they load at the same time.
+        const loads = [fetchData(), loadStudentEvaluation()];
+        // OCS Analytics loads now only if it's the active tab; otherwise when its tab is opened.
+        if (activeTab?.id === "tab-ocs-analytics" && window.OCSAnalytics?.loadAnalyticsSummary) {
+            loads.push(window.OCSAnalytics.loadAnalyticsSummary());
         }
+        await Promise.all(loads);
     };
                 </script>
 
