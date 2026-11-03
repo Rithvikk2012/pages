@@ -1,8 +1,15 @@
 import { baseurl, pythonURI, javaURI, fetchOptions, springEnabled } from './config.js';
+import { addLoginReturn } from './login-return.js';
 import { savedCourse, selectEntryCourse, courseEntryUrl } from '../course-entry.js';
 import { FormatConverter } from '../pages/dashboard/preferences.js';
 
 console.log("login.js loaded");
+
+// Delegation also covers login links inserted after the credentials check.
+document.addEventListener('click', (event) => {
+    const link = event.target.closest('a[href]');
+    if (link) addLoginReturn(link, window.location.href, baseurl);
+}, true);
 
 document.addEventListener('DOMContentLoaded', function () {
     console.log("Base URL:", baseurl); // Debugging line
@@ -51,7 +58,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         }
                     }
 
-                    warnIfSpringSignedOut(loginArea);
+                    // A limited account (a guest) never has a Spring account, so there is nothing to warn about
+                    if (!data.limited) warnIfSpringSignedOut(loginArea);
 
                     // Update navigation AFTER dropdown is set up
                     waitForElement('.trigger', 20, 100).then(() => {
